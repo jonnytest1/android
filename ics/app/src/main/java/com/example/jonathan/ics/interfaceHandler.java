@@ -7,17 +7,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.graphics.Color;
-import android.graphics.PorterDuff;
-import android.graphics.drawable.Drawable;
-import android.provider.Settings;
 import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.RemoteViews;
 
 /**
  * Created by Jonathan on 28.04.2018.
@@ -26,10 +22,21 @@ import android.view.View;
 public class interfaceHandler {
 
 
+    enum tts {
+        MA,SE,RE
+    }
     static SharedPreferences sP;
 
     static LocalBroadcastManager lBM;
 
+    static NotificationCompat.Builder mBuilder ;
+
+    static Activity activity;
+
+    public static void init(Activity activity){
+        interfaceHandler.activity=activity;
+
+    }
     public static void show(String msg,Activity activity){
         Snackbar snack = Snackbar.make(activity.findViewById(R.id.coordL),msg, Snackbar.LENGTH_LONG);
         View view = snack.getView();
@@ -61,41 +68,41 @@ public class interfaceHandler {
         }
         return sP.getString(key.toString(),null);
     }
-    public static void note(String text,Context context){
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
+    public  static  void note(String text){
+        note(text,"");
+    }
+    public static void note(String text,String text2){
+        mBuilder = new NotificationCompat.Builder(activity)
                 .setContentTitle(text);
         mBuilder.setSmallIcon(R.drawable.ic_android_black_24dp);
-        mBuilder.setContentText("yay");
-        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mBuilder.setContentText(text2);
+        mBuilder.setStyle(new NotificationCompat.BigTextStyle()
+                .bigText(text2));
+        NotificationManager mNotificationManager = (NotificationManager) activity.getSystemService(activity.NOTIFICATION_SERVICE);
 
 // notificationID allows you to update the notification later on.
         int notificationID=200;
         mNotificationManager.notify(notificationID, mBuilder.build());
     }
-    public static void update(Enum action ,String value,Context context){
-        if(lBM==null){
-            lBM=LocalBroadcastManager.getInstance(context);
-        }
-        lBM.sendBroadcast(new Intent(action.toString()).putExtra("value",value));
+    public static void update(tts target,Enum action ,String value,Context context){
+            update(target,action,value,"",context);
     }
 
-    public static String update(Enum action , final String value, String extra2, final Context context){
-        if(lBM==null){
-            lBM=LocalBroadcastManager.getInstance(context);
-        }
-        final String[] tmp = {null};
+    public static String update(tts target,Enum action , final String value, String extra2, final Context context){
 
-        if(action.toString().equals("com")&&!value.contains("Return")){
-            lBM.sendBroadcast(new Intent(action.toString()).putExtra("value",value).putExtra("value2",extra2));
-        }else{
-            lBM.sendBroadcast(new Intent(action.toString()).putExtra("value",value).putExtra("value2",extra2));
-        }
-        return tmp[0];
+           return MyOwnBroadCastThing.push(target,action,value,extra2);
+
     }
 
         public static LocalBroadcastManager getIBM(Context context){
             if(lBM==null){
                 lBM=LocalBroadcastManager.getInstance(context);
+                lBM.registerReceiver(new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+
+                    }
+                },new IntentFilter("Return"));
             }
             return lBM;
         }

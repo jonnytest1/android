@@ -1,15 +1,12 @@
 package com.example.jonathan.ics;
 
 import android.app.IntentService;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
 import android.support.annotation.Nullable;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.io.IOException;
@@ -35,7 +32,7 @@ import javax.mail.event.MessageCountEvent;
 import javax.mail.event.MessageCountListener;
 import javax.mail.internet.MimeBodyPart;
 
-public class Calendar2 extends IntentService implements Runnable{
+public class Calendar2 extends IntentService implements Runnable,ListenerInterface{
 
     static boolean islistening=false;
     public static final String[] EVENT_PROJECTION = new String[]{
@@ -45,10 +42,34 @@ public class Calendar2 extends IntentService implements Runnable{
             CalendarContract.Calendars.OWNER_ACCOUNT                  // 3
     };
 
+    Calendar2 ref;
     @Override
     public void run() {
 
          start();
+    }
+
+    @Override
+    public String OnReceiveMessage(interfaceHandler.tts target, Enum action, String value, String value2) {
+        if(action.equals(actions.check)){
+            if(emailFolder!=null) {
+                emailFolder.removeMessageCountListener(mCL);
+            }
+            t = new Thread(ref);
+            threads.add(t);
+            t.start();
+        }else if(action.equals(actions.com)){
+            switch (value){
+                case "requestStatus":
+                    return islistening?"true":"false";
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void OnNewListenerRegistered(interfaceHandler.tts target) {
+
     }
 
     enum actions{
@@ -56,16 +77,15 @@ public class Calendar2 extends IntentService implements Runnable{
     }
 
     public Calendar2() {
-
         super("Calender");
     }
     public Folder emailFolder;
     public MessageCountListener mCL=new MessageCountListener() {
         @Override
         public void messagesAdded(MessageCountEvent e) {
-            interfaceHandler.note("new mails",getBaseContext());
-            interfaceHandler.update(MainActivity.actions.started,"",getBaseContext());
-            interfaceHandler.update(MainActivity.actions.OnError,"new Mails",getBaseContext());
+            interfaceHandler.note("new mails");
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.started,"",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"new Mails",getBaseContext());
             Message[] messages = e.getMessages();
             System.out.println("messages.length---" + messages.length);
             checkMails(messages);
@@ -87,43 +107,15 @@ public class Calendar2 extends IntentService implements Runnable{
     @Override
     public int onStartCommand(final Intent intent, final int flags, final int startId) {
         //interfaceHandler.note("onStartCommand",getBaseContext());
-        final Calendar2 ref=this;
+        ref=this;
         t = new Thread(ref);
         threads.add(t);
         t.start();
-
-        IntentFilter iFilter=new IntentFilter();
-        for(actions i : actions.values()){
-            iFilter.addAction(i.toString());
-        }
-        interfaceHandler.getIBM(getBaseContext()).registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-
-                if(action.equals(actions.check.toString())){
-                    if(emailFolder!=null) {
-                        emailFolder.removeMessageCountListener(mCL);
-                    }
-                    t = new Thread(ref);
-                    threads.add(t);
-                    t.start();
-                }else if(action.equals(actions.com.toString())){
-                    String instruction = intent.getStringExtra("value");
-                    switch (instruction){
-                        case "requestStatus":
-                            interfaceHandler.update(MainActivity.actions.comR,instruction+"Return", islistening?"true":"false",getBaseContext());
-                            break;
-                    }
-                }
-            }
-        },iFilter);
-
-
         return super.onStartCommand(intent, flags, startId);
     }
 
     void start(){
+        MyOwnBroadCastThing.register(this,interfaceHandler.tts.SE);
         registerMailListener(0);
     }
 
@@ -133,13 +125,13 @@ public class Calendar2 extends IntentService implements Runnable{
         String account= interfaceHandler.get(MainActivity.vars.account,getBaseContext());
 
         if(account==null){
-            interfaceHandler.update(MainActivity.actions.OnError,"account not defined",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"account not defined",getBaseContext());
             return -1;
         }
 
         String calenderToDelete= interfaceHandler.get(MainActivity.vars.calender,getBaseContext());
         if(calenderToDelete==null){
-            interfaceHandler.update(MainActivity.actions.OnError,"calender is not defined",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"calender is not defined",getBaseContext());
             return -1;
         }
         String[] selectionArgs = new String[]{account};
@@ -174,7 +166,7 @@ public class Calendar2 extends IntentService implements Runnable{
         String user =  interfaceHandler.get(MainActivity.vars.mail,getBaseContext());
         String password = interfaceHandler.get(MainActivity.vars.password,getBaseContext());
         if(user==null||password==null){
-            interfaceHandler.update(MainActivity.actions.OnError,"password or user is null",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"password or user is null",getBaseContext());
             return;
         }
         try {
@@ -204,9 +196,9 @@ public class Calendar2 extends IntentService implements Runnable{
 
 
             emailFolder.addMessageCountListener(mCL);
-            //interfaceHandler.note("registered Listener",getBaseContext());
+            interfaceHandler.note("registered Listener");
             islistening=true;
-            interfaceHandler.update(MainActivity.actions.registered,"",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.registered,"",getBaseContext());
 
             IdleThread idleThread = new IdleThread(emailFolder,user,password);
             idleThread.setDaemon(false);
@@ -215,20 +207,20 @@ public class Calendar2 extends IntentService implements Runnable{
         } catch (NoSuchProviderException e) {
             e.printStackTrace();
             Log.i("MainActivity1", e.getMessage());
-            interfaceHandler.note(e.getMessage(),getBaseContext());
+            interfaceHandler.note(e.getMessage());
         } catch (MessagingException e) {
             if(e.getMessage().contains("[AUTHENTICATIONFAILED]")){
                 if(feedback==1){
-                    interfaceHandler.note("wrong user credentials",getBaseContext());
-                    interfaceHandler.update(MainActivity.actions.OnError,"wrong user Credentials",getBaseContext());
+                    interfaceHandler.note("wrong user credentials");
+                    interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"wrong user Credentials",getBaseContext());
                 }
             }else{
-                interfaceHandler.note(e.getMessage(),getBaseContext());
+                interfaceHandler.note(e.getMessage());
             }
         } catch (Exception e) {
             e.printStackTrace();
             Log.i("MainActivity1", "error" + e.getMessage());
-            interfaceHandler.note(e.getMessage(),getBaseContext());
+            interfaceHandler.note(e.getMessage());
         }
     }
 
@@ -236,14 +228,14 @@ public class Calendar2 extends IntentService implements Runnable{
         Calendar now = Calendar.getInstance();
         DateFormat format = new SimpleDateFormat("HH:mm:ss'\n'dd.MM.yyyy", Locale.GERMAN);
         String nowS=format.format(now.getTime());
-        interfaceHandler.update(MainActivity.actions.finished,nowS,getBaseContext());
+        interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.finished,nowS,getBaseContext());
     }
     void checkMails(Message[] messages) {
         System.out.println("checking mails");
         int n = messages.length;
         String basMail=interfaceHandler.get(MainActivity.vars.basMail,getBaseContext());
         if(basMail==null){
-            interfaceHandler.update(MainActivity.actions.OnError,"basMail is null",getBaseContext());
+            interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"basMail is null",getBaseContext());
             return;
         }
         for (int i = n - 1; i >= 0; i--) {
@@ -282,7 +274,7 @@ public class Calendar2 extends IntentService implements Runnable{
                 System.out.println(e);
             }
         }
-        interfaceHandler.update(MainActivity.actions.OnError,"emails not from correct mail double Check basMail",getBaseContext());
+        interfaceHandler.update(interfaceHandler.tts.MA,MainActivity.actions.OnError,"emails not from correct mail double Check basMail",getBaseContext());
     }
     void saveCalender(String[] events, int calID) throws ParseException {
         System.out.println("saving to calender");

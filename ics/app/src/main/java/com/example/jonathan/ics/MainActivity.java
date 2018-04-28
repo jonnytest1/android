@@ -1,10 +1,8 @@
 package com.example.jonathan.ics;
 
 import android.app.ActivityManager;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -30,7 +28,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ListenerInterface {
+
+
 
     enum vars {
         calender,mail,password,account,lastChecked,basMail
@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
     final boolean[] nextCalender = {true};
-
+    TextView lastCheck;
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -78,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         System.out.println("created");
         requestPerms();
-
     }
     private boolean requestPerms(){
 
@@ -90,9 +89,11 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        interfaceHandler.init(this);
+
         if(!isMyServiceRunning(Calendar2.class)){
-            Intent MyIntentService = new Intent(getApplicationContext(), Calendar2.class);
-            startService(MyIntentService );
+            Intent MyIntentService = new Intent(getBaseContext(), Calendar2.class);
+            startService(MyIntentService);
         }
         setupBroadCast();
         updateDatefield();
@@ -104,42 +105,46 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    public void setupBroadCast(){
-        IntentFilter iFilter=new IntentFilter();
-        for(actions i : actions.values()){
-            iFilter.addAction(i.toString());
-        }
-        final TextView lastCheck=(TextView)findViewById(R.id.textViewChecked);
-        interfaceHandler.getIBM(getBaseContext()).registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-                if(action.equals(actions.started.toString())){
-                    String uri = "@android:drawable/ic_popup_sync";  // where myresource (without the extension) is the file
-                    int imageResource = getResources().getIdentifier(uri, null, getPackageName());
-                    Drawable res = getResources().getDrawable(imageResource);
-                    ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
-                }else if(action.equals(actions.OnError.toString())){
-                    interfaceHandler.show(intent.getStringExtra("value"),mainA);
-                }else if(action.equals(actions.finished.toString())){
-                    String value=intent.getStringExtra("value");
-                    lastCheck.setText(value);
-                    interfaceHandler.note("updated",mainA);
-                    interfaceHandler.write(vars.lastChecked,value,mainA);
-                    String uri = "@android:drawable/stat_notify_sync_noanim";
-                    int imageResource = getResources().getIdentifier(uri, null, getPackageName());
-                    Drawable res = getResources().getDrawable(imageResource);
-                    ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
-                }else  if(action.equals(actions.registered.toString())){
-                    findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
-                }else if(action.equals(actions.comR.toString())){
-                    if("answerStatus".equals(intent.getBooleanExtra("value",false))){
-                        findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
-                    }
-                }
-            }
-        },iFilter);
+    @Override
+    public String OnReceiveMessage(interfaceHandler.tts target, Enum action, String value, String value2) {
+        if(action.equals(actions.started)){
+            String uri = "@android:drawable/ic_popup_sync";  // where myresource (without the extension) is the file
+            int imageResource = getResources().getIdentifier(uri, null, getPackageName());
+            Drawable res = getResources().getDrawable(imageResource);
+            ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
+        }else if(action.equals(actions.OnError)){
+            interfaceHandler.show(value,mainA);
+        }else if(action.equals(actions.finished)){
+            lastCheck.setText(value);
+            interfaceHandler.note("updated");
+            interfaceHandler.write(vars.lastChecked,value,mainA);
+            String uri = "@android:drawable/stat_notify_sync_noanim";
+            int imageResource = getResources().getIdentifier(uri, null, getPackageName());
+            Drawable res = getResources().getDrawable(imageResource);
+            ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
+        }else  if(action.equals(actions.registered)){
 
+            findViewById(R.id.fab).getBackground().setColorFilter(Color.GREEN, PorterDuff.Mode.DARKEN);
+        }
+        return null;
+    }
+
+    @Override
+    public void OnNewListenerRegistered(interfaceHandler.tts target) {
+        if(target.equals(interfaceHandler.tts.SE)){
+            String answer= MyOwnBroadCastThing.push(interfaceHandler.tts.SE,Calendar2.actions.com,"requestStatus","");
+            interfaceHandler.note(answer);
+            if(answer.equals("true")){
+                findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
+            }
+        }
+    }
+
+    public void setupBroadCast(){
+        lastCheck=(TextView)findViewById(R.id.textViewChecked);
+        if(MyOwnBroadCastThing.register(this,interfaceHandler.tts.MA).size()>1){
+            findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
+        };
     }
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
@@ -160,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         fab.bringToFront();
-        interfaceHandler.update(Calendar2.actions.com,"requestStatus","",this);
+
         if(Calendar2.islistening) {
             findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
         }
@@ -365,7 +370,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void checkMail(){
-        interfaceHandler.update(Calendar2.actions.check,"",this);
+        interfaceHandler.update(interfaceHandler.tts.SE,Calendar2.actions.check,"",this);
     }
 
 
