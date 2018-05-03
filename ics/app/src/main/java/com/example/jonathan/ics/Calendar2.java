@@ -47,23 +47,20 @@ public class Calendar2 extends IntentService implements Runnable{
 
     @Override
     public void run() {
-
          start();
     }
 
     enum actions{
         check, com
     }
-
     public Calendar2() {
-
         super("Calender");
     }
     public Folder emailFolder;
     public MessageCountListener mCL=new MessageCountListener() {
         @Override
         public void messagesAdded(MessageCountEvent e) {
-            interfaceHandler.note("new mails",getBaseContext());
+            interfaceHandler.note("new mails");
             interfaceHandler.update(MainActivity.actions.started,"",getBaseContext());
             interfaceHandler.update(MainActivity.actions.OnError,"new Mails",getBaseContext());
             Message[] messages = e.getMessages();
@@ -89,6 +86,7 @@ public class Calendar2 extends IntentService implements Runnable{
         //interfaceHandler.note("onStartCommand",getBaseContext());
         final Calendar2 ref=this;
         t = new Thread(ref);
+        t.setName("calendarViaStartCommand");
         threads.add(t);
         t.start();
 
@@ -106,6 +104,7 @@ public class Calendar2 extends IntentService implements Runnable{
                         emailFolder.removeMessageCountListener(mCL);
                     }
                     t = new Thread(ref);
+                    t.setName("calendarViaReceive");
                     threads.add(t);
                     t.start();
                 }else if(action.equals(actions.com.toString())){
@@ -120,10 +119,11 @@ public class Calendar2 extends IntentService implements Runnable{
         },iFilter);
 
 
-        return super.onStartCommand(intent, flags, startId);
+        return START_STICKY;
     }
 
     void start(){
+
         registerMailListener(0);
     }
 
@@ -201,7 +201,7 @@ public class Calendar2 extends IntentService implements Runnable{
             for(int i=msg.length-2;i>-1;i--){
                 msg[i].getContent();
             }
-
+            emailFolder.setFlags(msg, new Flags(Flags.Flag.SEEN), true);
 
             emailFolder.addMessageCountListener(mCL);
             //interfaceHandler.note("registered Listener",getBaseContext());
@@ -215,20 +215,20 @@ public class Calendar2 extends IntentService implements Runnable{
         } catch (NoSuchProviderException e) {
             e.printStackTrace();
             Log.i("MainActivity1", e.getMessage());
-            interfaceHandler.note(e.getMessage(),getBaseContext());
+            interfaceHandler.note(e.getMessage());
         } catch (MessagingException e) {
             if(e.getMessage().contains("[AUTHENTICATIONFAILED]")){
                 if(feedback==1){
-                    interfaceHandler.note("wrong user credentials",getBaseContext());
+                    interfaceHandler.note("wrong user credentials");
                     interfaceHandler.update(MainActivity.actions.OnError,"wrong user Credentials",getBaseContext());
                 }
             }else{
-                interfaceHandler.note(e.getMessage(),getBaseContext());
+                interfaceHandler.note(e.getMessage());
             }
         } catch (Exception e) {
             e.printStackTrace();
             Log.i("MainActivity1", "error" + e.getMessage());
-            interfaceHandler.note(e.getMessage(),getBaseContext());
+            interfaceHandler.note(e.getMessage());
         }
     }
 

@@ -30,6 +30,14 @@ public class interfaceHandler {
 
     static LocalBroadcastManager lBM;
 
+    static NotificationCompat.Builder mBuilder ;
+
+    static Activity activity;
+    public static void init(Activity activity){
+        interfaceHandler.activity=activity;
+
+    }
+
     public static void show(String msg,Activity activity){
         Snackbar snack = Snackbar.make(activity.findViewById(R.id.coordL),msg, Snackbar.LENGTH_LONG);
         View view = snack.getView();
@@ -61,12 +69,17 @@ public class interfaceHandler {
         }
         return sP.getString(key.toString(),null);
     }
-    public static void note(String text,Context context){
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
+    public  static  void note(String text){
+        note(text,"");
+    }
+    public static void note(String text,String text2){
+        mBuilder = new NotificationCompat.Builder(activity)
                 .setContentTitle(text);
         mBuilder.setSmallIcon(R.drawable.ic_android_black_24dp);
-        mBuilder.setContentText("yay");
-        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mBuilder.setContentText(text2);
+        mBuilder.setStyle(new NotificationCompat.BigTextStyle()
+                .bigText(text2));
+        NotificationManager mNotificationManager = (NotificationManager) activity.getSystemService(activity.NOTIFICATION_SERVICE);
 
 // notificationID allows you to update the notification later on.
         int notificationID=200;

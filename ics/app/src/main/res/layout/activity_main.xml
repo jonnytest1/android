@@ -226,7 +226,7 @@
 
             <TableRow
                 android:layout_width="match_parent"
-                android:layout_height="?attr/listPreferredItemHeight"
+                android:layout_height="match_parent"
                 android:gravity="center"
                 tools:layout_editor_absoluteX="8dp"
                 tools:layout_editor_absoluteY="8dp">
@@ -260,6 +260,26 @@
                     app:layout_constraintRight_toRightOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/spinner" />
 
+            </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                tools:layout_editor_absoluteX="8dp"
+                tools:layout_editor_absoluteY="8dp">
+
+                <TextView
+                    android:id="@+id/textView2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="running threads" />
+
+                <TextView
+                    android:id="@+id/textViewThreads"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="TextView" />
             </TableRow>
 
         </TableLayout>

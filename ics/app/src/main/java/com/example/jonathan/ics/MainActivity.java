@@ -29,6 +29,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -105,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void setupBroadCast(){
+        interfaceHandler.init(this);
         IntentFilter iFilter=new IntentFilter();
         for(actions i : actions.values()){
             iFilter.addAction(i.toString());
@@ -124,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
                 }else if(action.equals(actions.finished.toString())){
                     String value=intent.getStringExtra("value");
                     lastCheck.setText(value);
-                    interfaceHandler.note("updated",mainA);
+                    interfaceHandler.note("updated");
                     interfaceHandler.write(vars.lastChecked,value,mainA);
                     String uri = "@android:drawable/stat_notify_sync_noanim";
                     int imageResource = getResources().getIdentifier(uri, null, getPackageName());
@@ -225,6 +227,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         basmail.setText( interfaceHandler.get(vars.basMail,this));
+
+
+        final TextView tF=(TextView)findViewById(R.id.textViewThreads);
+        Map<Thread,StackTraceElement[]> sT=Thread.getAllStackTraces();
+        String threads="";
+        for(Map.Entry<Thread,StackTraceElement[]> mE : sT.entrySet()){
+            threads+=mE.getKey()+" "+"\n";
+        }
+        interfaceHandler.note("threads view",threads);
     }
     private void calenderSpinner(){
 
