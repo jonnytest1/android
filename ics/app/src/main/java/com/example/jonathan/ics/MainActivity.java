@@ -1,7 +1,11 @@
 package com.example.jonathan.ics;
 
+import android.accounts.Account;
 import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -16,6 +20,7 @@ import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
@@ -30,6 +35,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Map;
+
+import static com.example.jonathan.ics.Calendar2.EVENT_PROJECTION;
+import static com.example.jonathan.ics.NetworkHandler.islistening;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -94,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         if(!isMyServiceRunning(Calendar2.class)){
             Intent MyIntentService = new Intent(getApplicationContext(), Calendar2.class);
             startService(MyIntentService );
+
         }
         setupBroadCast();
         updateDatefield();
@@ -158,12 +167,70 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
+                interfaceHandler.update(Calendar2.actions.test,"",mainA);
             }
         });
         fab.bringToFront();
+
+        FloatingActionButton fab2 = (FloatingActionButton) findViewById(R.id.clear);
+        fab2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                try {
+                        System.out.println("clearing");
+                        String selection = "((" + CalendarContract.Calendars.ACCOUNT_NAME + " = ?) )";
+                        String account= interfaceHandler.get(MainActivity.vars.account,getBaseContext());
+
+                        if(account==null){
+                            interfaceHandler.update(MainActivity.actions.OnError,"account not defined",getBaseContext());
+                            return;
+                        }
+
+                        String calenderToDelete= interfaceHandler.get(MainActivity.vars.calender,getBaseContext());
+                        if(calenderToDelete==null){
+                            interfaceHandler.update(MainActivity.actions.OnError,"calender is not defined",getBaseContext());
+                            return;
+                        }
+                        String[] selectionArgs = new String[]{account};
+
+                        Context context = getApplicationContext();
+                        Cursor cursor;
+                        cursor = context.getContentResolver().query(Uri.parse("content://com.android.calendar/calendars"), EVENT_PROJECTION, selection, selectionArgs, null, null);
+                        if (cursor != null) {
+                            cursor.moveToFirst();
+                        }
+
+
+                        if (cursor != null && cursor.getCount() > 0) {
+                            while (!cursor.isAfterLast()) {
+                                if (cursor.getString(cursor.getColumnIndex("calendar_displayName")).equals(calenderToDelete)) {
+
+                                    Uri CALENDAR_URI = Uri.parse("content://com.android.calendar/events");
+                                    int calenderID = cursor.getInt(cursor.getColumnIndex("_id"));
+                                    ContentResolver contentR= context.getContentResolver();
+                                    contentR.delete(CALENDAR_URI, "calendar_id=" + calenderID, null);
+                                   /* Bundle extras = new Bundle();
+                                    extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+                                    extras.putBoolean(ContentResolver.SYNC_EXTRAS_OVERRIDE_TOO_MANY_DELETIONS, true);
+                                    ContentResolver.requestSync(new Account(), CalendarContract.Authority, extras);*/
+                                }
+                                cursor.moveToNext();
+                            }
+                        }
+                        Intent intent=new Intent();
+                        interfaceHandler.show("cleared edit calender",mainA);
+                    ContentResolver.setMasterSyncAutomatically(false);
+                    //interfaceHandler.note("cleared calender");
+                    ContentResolver.setMasterSyncAutomatically(true);
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
+        fab2.bringToFront();
+
         interfaceHandler.update(Calendar2.actions.com,"requestStatus","",this);
-        if(Calendar2.islistening) {
+        if(islistening) {
             findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
         }
         final TextView lastCheck = (TextView)findViewById(R.id.textViewChecked);
@@ -232,10 +299,6 @@ public class MainActivity extends AppCompatActivity {
         final TextView tF=(TextView)findViewById(R.id.textViewThreads);
         Map<Thread,StackTraceElement[]> sT=Thread.getAllStackTraces();
         String threads="";
-        for(Map.Entry<Thread,StackTraceElement[]> mE : sT.entrySet()){
-            threads+=mE.getKey()+" "+"\n";
-        }
-        interfaceHandler.note("threads view",threads);
     }
     private void calenderSpinner(){
 

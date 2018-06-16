@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.provider.CalendarContract;
 import android.support.v4.app.ActivityCompat;
 
@@ -22,106 +23,140 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class CalendarEvent {
 
-    long startMillis = 0;
-    long endMillis = 0;
+    private long startMillis = 0;
+    private long endMillis = 0;
 
-    Calendar beginTime = Calendar.getInstance();
-    Calendar endTime = Calendar.getInstance();
+    private Calendar beginTime = Calendar.getInstance();
+    private Calendar endTime = Calendar.getInstance();
 
-    DateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.GERMAN);
-    DateFormat formatAllDay = new SimpleDateFormat("yyyyMMdd", Locale.GERMAN);
-    String title = "";
-    String repType = null;
-    int repAMount = 1;
-    int repInterval = 1;
-    boolean allDay = false;
-    String repDays = null;
 
-    CalendarEvent(){
+    private String title = "";
+    private String repType = null;
+    private int repAMount = 1;
+    private int repInterval = 1;
+    private boolean allDay = false;
+    private String repDays = null;
+    private String uuid=null;
+    private Calendar reftime=null;
+    private CalendarEvent(){
 
     }
 
-    static CalendarEvent parse(String eventInICS,int j) {
+    static CalendarEvent parse(String eventInICS) {
         String[] eventattributes = eventInICS.split("\r\n");
         CalendarEvent cE=new CalendarEvent();
-        for (int i3 = 0; i3 < eventattributes.length; i3++) {
-            System.out.println("event:" + j + "att:" + i3);
-            String att = eventattributes[i3];
-            if (att.contains("DTSTART")) {
-                String Stime = att.split(":")[1].replace("Z", "");
-                Date Sdate=null;
-                if (!Stime.contains("T")) {
-                    cE.setAllDay(true);
-                    try {
-                        Sdate = cE.formatAllDay.parse(Stime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+        try{
+            for (int i3 = 0; i3 < eventattributes.length; i3++) {
+                String att = eventattributes[i3];
+                if (att.contains("DTSTART")) {
+                    cE.beginTime.setTime(parseDate(att.split(":")[1]));
+                    if(!att.split(":")[1].contains("T")){
+                        cE.allDay=true;
                     }
-                } else {
-                    try {
-                        Sdate = cE.format.parse(Stime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    cE.startMillis = cE.beginTime.getTimeInMillis();
+                } else if (att.contains("DTEND")) {
+                    if(!att.split(":")[1].contains("T")){
+                        cE.allDay=true;
                     }
-                }
-                cE.beginTime.setTime(Sdate);
-                cE.startMillis = cE.beginTime.getTimeInMillis();
-            } else if (att.contains("DTEND")) {
-                String Etime = att.split(":")[1].replace("Z", "");
-                Date Edate=null;
-                if (!Etime.contains("T")) {
-                    try {
-                        Edate = cE.formatAllDay.parse(Etime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    cE.endTime.setTime(parseDate(att.split(":")[1]));
+                    cE.endMillis = cE.endTime.getTimeInMillis();
+                } else if (att.contains("RECURRENCE-ID")) {
+                    if(!att.split(":")[1].contains("T")){
+                        cE.allDay=true;
                     }
-                } else {
-                    try {
-                        Edate = cE.format.parse(Etime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                }
-                cE.endTime.setTime(Edate);
-                cE.endMillis = cE.endTime.getTimeInMillis();
-            } else if (att.contains("SUMMARY")) {
-                cE.title = att.split("LANGUAGE=de:")[1];
-            } else if (att.contains("RRULE:")) {
-                String[] subatts = att.split(":")[1].split(";");
-                for (String t : subatts) {
-                    if (t.contains("FREQ")) {
-                        cE.repType = t.split("FREQ=")[1];
-                    } else if (t.contains("COUNT")) {
-                        cE.repAMount = Integer.parseInt(t.split("COUNT=")[1]);
-                    } else if (t.contains("INTERVAL")) {
-                        cE.repInterval = Integer.parseInt(t.split("INTERVAL=")[1]);
-                    } else if (t.contains("BYDAY")) {
-                        cE.repDays = t.split("BYDAY=")[1];
+                    cE.reftime=Calendar.getInstance();
+                    cE.reftime.setTime(parseDate(att.split(":")[1]));
+                } else if (att.contains("SUMMARY")) {
+                   // System.out.println(att);
+                    cE.title = att.replace("SUMMARY;","").replace("SUMMARY:","").replace("LANGUAGE=de:","");
+                } else if (att.contains("UID")) {
+                   // System.out.println(att);
+                    cE.uuid = att.split("UID:")[1];
+                } else if (att.contains("RRULE:")) {
+                    String[] subatts = att.split(":")[1].split(";");
+                    try{
+                        for (String t : subatts) {
+                            if (t.contains("FREQ")) {
+                                cE.repType = t.split("FREQ=")[1];
+                            } else if (t.contains("COUNT")) {
+                                cE.repAMount = Integer.parseInt(t.split("COUNT=")[1]);
+                            } else if (t.contains("INTERVAL")) {
+                                cE.repInterval = Integer.parseInt(t.split("INTERVAL=")[1]);
+                            } else if (t.contains("BYDAY")) {
+                                cE.repDays = t.split("BYDAY=")[1];
+                            }
+                        }
+                    }catch(IndexOutOfBoundsException ioobe){
+                        ioobe.printStackTrace();
+                        interfaceHandler.note("Exception","calender :  "+ ioobe.getMessage());
                     }
                 }
             }
+        }catch(IndexOutOfBoundsException ioobe){
+            ioobe.printStackTrace();
+            interfaceHandler.note("Exception","calender : "+" "+ ioobe.getMessage());
         }
         return  cE;
     }
-    public void toData(int calID, Context context){
-        ContentValues values = new ContentValues();
-        ContentResolver cr =  context.getContentResolver();
-        values.put(CalendarContract.Events.DTSTART, startMillis);
-        values.put(CalendarContract.Events.DTEND, endMillis);
-        values.put(CalendarContract.Events.TITLE,title);
-        values.put(CalendarContract.Events.ALL_DAY,allDay);
-        values.put(CalendarContract.Events.DESCRIPTION, "");
-        values.put(CalendarContract.Events.CALENDAR_ID, calID);
-        values.put(CalendarContract.Events.EVENT_TIMEZONE, "EST");
-        if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
-            return;
+    private void toData(int calID, Context context){
+        ContentResolver cr = context.getContentResolver();
+        if(uuid!=""&&uuid!=null&&reftime!=null){
+            ContentValues values = new ContentValues();
+            try{
+                values.put(CalendarContract.Events.DTSTART,startMillis);
+            }catch (NullPointerException e){
+
+            }
+            try{
+                values.put(CalendarContract.Events.DTEND, endMillis);
+            }catch (NullPointerException e){
+
+            }
+            try{
+                values.put(CalendarContract.Events.ALL_DAY, allDay);
+            }catch (NullPointerException e){
+
+            }
+
+            Cursor crs=cr.query(CalendarContract.Events.CONTENT_URI,null,CalendarContract.Events.UID_2445 +" LIKE ?",new String[]{uuid},null);
+            int count=0;
+            while(!crs.isLast()){
+                crs.moveToNext();
+                count++;
+            }
+            String[] columns=crs.getColumnNames();
+            for(String column:columns){
+              //  System.out.println(column+" "+crs.getString(crs.getColumnIndex(column)));
+            }
+            System.out.println("amount : "+count);
+            String[] selectionArgs =new String[]{calID+"",uuid,reftime.getTimeInMillis()+""};
+            cr.update(CalendarContract.Events.CONTENT_URI,values,CalendarContract.Events.CALENDAR_ID+ " LIKE ? AND "
+                    + CalendarContract.Events.UID_2445 +" LIKE ? AND "
+                    + CalendarContract.Events.DTSTART +" LIKE ? ",selectionArgs);
+
+
         }
-        System.out.println("committing");
-        cr.insert(CalendarContract.Events.CONTENT_URI, values);
+        if(!title.contains("Abgesagt")&& reftime==null) {
+            ContentValues values = new ContentValues();
+
+            values.put(CalendarContract.Events.DTSTART, startMillis);
+            values.put(CalendarContract.Events.DTEND, endMillis);
+            values.put(CalendarContract.Events.TITLE, title);
+            values.put(CalendarContract.Events.ALL_DAY, allDay);
+            values.put(CalendarContract.Events.DESCRIPTION, "");
+            values.put(CalendarContract.Events.CALENDAR_ID, calID);
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, "EST");
+
+            values.put(CalendarContract.Events.UID_2445, uuid);
+            if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
+                interfaceHandler.note("missing perm");
+                return;
+            }
+            System.out.println("committing");
+            cr.insert(CalendarContract.Events.CONTENT_URI, values);
+        }
     }
     public void save(int calID, Context context){
-
-
         for(int i4=0;i4<repAMount;i4++){
             if(repDays!=null){
                 Calendar day= Calendar.getInstance();
@@ -142,16 +177,20 @@ public class CalendarEvent {
 
             if(repType!=null){
                 int addition=0;
-                if(repType.equals("DAILY")){
-                    addition=repInterval*1000*60*60*24;
-                }else if(repType.equals("WEEKLY")){
-                    if(repDays!=null){
-                        addition =repInterval*1000*60*60*24;
-                    }else {
-                        addition = repInterval * 1000 * 60 * 60 * 24 * 7;
-                    }
-                }else{
-                    System.out.println("unimplemented repetion type"+repType);
+                switch (repType) {
+                    case "DAILY":
+                        addition = repInterval * 1000 * 60 * 60 * 24;
+                        break;
+                    case "WEEKLY":
+                        if (repDays != null) {
+                            addition = repInterval * 1000 * 60 * 60 * 24;
+                        } else {
+                            addition = repInterval * 1000 * 60 * 60 * 24 * 7;
+                        }
+                        break;
+                    default:
+                        System.out.println("unimplemented repetion type" + repType);
+                        break;
                 }
                 startMillis+=addition;
                 endMillis+=addition;
@@ -159,7 +198,31 @@ public class CalendarEvent {
         }
         System.out.println("finished this event");
     }
-
+    private static Date parseDate(String dateStr){
+        DateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.GERMAN);
+        DateFormat formatWithZone = new SimpleDateFormat("yyyyMMdd'T'HHmmssZ", Locale.GERMAN);
+        DateFormat formatAllDay = new SimpleDateFormat("yyyyMMdd", Locale.GERMAN);
+        if (!dateStr.contains("T")) {
+            try {
+                return formatAllDay.parse(dateStr);
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return null;
+            }
+        } else {
+            dateStr=dateStr.replace("Z","UTC");
+            try {
+                return formatWithZone.parse(dateStr);
+            } catch (ParseException e1) {
+                try {
+                    return format.parse(dateStr);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+        }
+    }
     public long getStartMillis() {
         return startMillis;
     }
@@ -192,22 +255,6 @@ public class CalendarEvent {
         this.endTime = endTime;
     }
 
-    public DateFormat getFormat() {
-        return format;
-    }
-
-    public void setFormat(DateFormat format) {
-        this.format = format;
-    }
-
-    public DateFormat getFormatAllDay() {
-        return formatAllDay;
-    }
-
-    public void setFormatAllDay(DateFormat formatAllDay) {
-        this.formatAllDay = formatAllDay;
-    }
-
     public String getTitle() {
         return title;
     }
@@ -224,9 +271,6 @@ public class CalendarEvent {
         this.repType = repType;
     }
 
-    public int getRepAMount() {
-        return repAMount;
-    }
 
     public void setRepAMount(int repAMount) {
         this.repAMount = repAMount;
