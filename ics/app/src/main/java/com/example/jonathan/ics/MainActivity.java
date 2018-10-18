@@ -1,9 +1,5 @@
 package com.example.jonathan.ics;
 
-import android.accounts.Account;
-import android.app.ActivityManager;
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -18,10 +14,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
+import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -30,23 +27,30 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.Set;
 
-import static com.example.jonathan.ics.Calendar2.EVENT_PROJECTION;
-import static com.example.jonathan.ics.NetworkHandler.islistening;
+import static com.example.jonathan.ics.MailScheduler.registerScheduler;
+import static com.example.jonathan.ics.R.id.refresh;
+
 
 public class MainActivity extends AppCompatActivity {
-
+    public static final String[] EVENT_PROJECTION = new String[]{
+            CalendarContract.Calendars._ID,                           // 0
+            CalendarContract.Calendars.ACCOUNT_NAME,                  // 1
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,         // 2
+            CalendarContract.Calendars.OWNER_ACCOUNT                  // 3
+    };
     enum vars {
-        calender,mail,password,account,lastChecked,basMail
+        calender,mail,password,account,lastChecked,basMail,log
     }
 
     enum actions{
-        OnError,started,finished,registered,comR
+        OnError,started,finished,registered,comR,logUpdate
 
     }
 
@@ -83,26 +87,28 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         System.out.println("created");
         requestPerms();
 
     }
-    private boolean requestPerms(){
+    private void requestPerms(){
 
         for (String perm : perms) {
             if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
                 interfaceHandler.show(perm + " is not set",this);
                 requestPermissions(perms, 5);
-                return false;
+                return;
             }
         }
+        setConsoleListener();
 
-        if(!isMyServiceRunning(Calendar2.class)){
-            Intent MyIntentService = new Intent(getApplicationContext(), Calendar2.class);
-            startService(MyIntentService );
-
+        TextView text = findViewById(R.id.schedulerValue);
+        if(!registerScheduler(getBaseContext())){
+            text.setText("already registered");
+        }else{
+            text.setText("had to register new");
         }
         setupBroadCast();
         updateDatefield();
@@ -111,69 +117,123 @@ public class MainActivity extends AppCompatActivity {
         calenderSpinner();
 
 
-        return true;
+    }
+    private void setLogText(){
+
+        String t=null;
+        try{
+            t.getBytes();
+
+        }catch (NullPointerException e){
+            interfaceHandler.push(e,this);
+
+        }
+
+        //Spinner spinner=findViewById(R.id.spinner3);
+
+       Set<String> logs= interfaceHandler.getLog(this);
+        LinearLayout layout=findViewById(R.id.linear);
+
+        int pos=0;
+        for(String s:logs) {
+            TextView valueTV = new TextView(this);
+            valueTV.setText(pos+s.split("\n")[0]);
+            valueTV.setId(View.NO_ID);
+            valueTV.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            layout.addView(valueTV,pos++);
+        }
+
+
+    }
+
+    private void setConsoleListener() {
+        View layout = findViewById(R.id.schedulerRow);
+        layout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                View layout = findViewById(R.id.consoleLayout);
+                layout.setVisibility(View.VISIBLE);
+                setLogText();
+
+            }
+        });
+        LinearLayout l=findViewById(R.id.linear);
+        l.setClickable(true);
+        l.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                View layout = findViewById(R.id.consoleLayout);
+                layout.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        ConstraintLayout cL=findViewById(R.id.consoleLayout);
+        cL.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                View layout = findViewById(R.id.consoleLayout);
+                layout.setVisibility(View.INVISIBLE);
+            }
+        });
+
     }
 
     public void setupBroadCast(){
-        interfaceHandler.init(this);
         IntentFilter iFilter=new IntentFilter();
         for(actions i : actions.values()){
             iFilter.addAction(i.toString());
         }
-        final TextView lastCheck=(TextView)findViewById(R.id.textViewChecked);
+        final TextView lastCheck= findViewById(R.id.textViewChecked);
         interfaceHandler.getIBM(getBaseContext()).registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                if(action.equals(actions.started.toString())){
+                if(actions.started.toString().equals(action)){
                     String uri = "@android:drawable/ic_popup_sync";  // where myresource (without the extension) is the file
                     int imageResource = getResources().getIdentifier(uri, null, getPackageName());
                     Drawable res = getResources().getDrawable(imageResource);
-                    ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
-                }else if(action.equals(actions.OnError.toString())){
+                    ((FloatingActionButton) findViewById(refresh)).setImageDrawable(res);
+                }else if(actions.OnError.toString().equals(action)){
                     interfaceHandler.show(intent.getStringExtra("value"),mainA);
-                }else if(action.equals(actions.finished.toString())){
+                }else if(actions.finished.toString().equals(action)){
                     String value=intent.getStringExtra("value");
                     lastCheck.setText(value);
-                    interfaceHandler.note("updated");
                     interfaceHandler.write(vars.lastChecked,value,mainA);
                     String uri = "@android:drawable/stat_notify_sync_noanim";
                     int imageResource = getResources().getIdentifier(uri, null, getPackageName());
                     Drawable res = getResources().getDrawable(imageResource);
-                    ((FloatingActionButton) findViewById(R.id.fab)).setImageDrawable(res);
-                }else  if(action.equals(actions.registered.toString())){
-                    findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
-                }else if(action.equals(actions.comR.toString())){
-                    if("answerStatus".equals(intent.getBooleanExtra("value",false))){
-                        findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
+                    ((FloatingActionButton) findViewById(refresh)).setImageDrawable(res);
+                }else  if(actions.registered.toString().equals(action)){
+                    findViewById(refresh).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
+                }else if(actions.comR.toString().equals(action)){
+                    if("answerStatus".equals(intent.getStringExtra("value"))){
+                        findViewById(refresh).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
                     }
+                }else if(actions.logUpdate.toString().equals(action)){
+                    setLogText();
                 }
             }
         },iFilter);
 
     }
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
+
     public void updateDatefield(){
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton refresh = findViewById(R.id.refresh);
+        refresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                interfaceHandler.update(Calendar2.actions.test,"",mainA);
+                MailScheduler.startInNewThread(getBaseContext());
             }
         });
-        fab.bringToFront();
+        refresh.getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
+        refresh.bringToFront();
 
-        FloatingActionButton fab2 = (FloatingActionButton) findViewById(R.id.clear);
-        fab2.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton clear = findViewById(R.id.clear);
+        clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 try {
@@ -198,26 +258,24 @@ public class MainActivity extends AppCompatActivity {
                         cursor = context.getContentResolver().query(Uri.parse("content://com.android.calendar/calendars"), EVENT_PROJECTION, selection, selectionArgs, null, null);
                         if (cursor != null) {
                             cursor.moveToFirst();
-                        }
+                            if ( cursor.getCount() > 0) {
+                                while (!cursor.isAfterLast()) {
+                                    if (cursor.getString(cursor.getColumnIndex("calendar_displayName")).equals(calenderToDelete)) {
 
-
-                        if (cursor != null && cursor.getCount() > 0) {
-                            while (!cursor.isAfterLast()) {
-                                if (cursor.getString(cursor.getColumnIndex("calendar_displayName")).equals(calenderToDelete)) {
-
-                                    Uri CALENDAR_URI = Uri.parse("content://com.android.calendar/events");
-                                    int calenderID = cursor.getInt(cursor.getColumnIndex("_id"));
-                                    ContentResolver contentR= context.getContentResolver();
-                                    contentR.delete(CALENDAR_URI, "calendar_id=" + calenderID, null);
+                                        Uri CALENDAR_URI = Uri.parse("content://com.android.calendar/events");
+                                        int calenderID = cursor.getInt(cursor.getColumnIndex("_id"));
+                                        ContentResolver contentR= context.getContentResolver();
+                                        contentR.delete(CALENDAR_URI, "calendar_id=" + calenderID, null);
                                    /* Bundle extras = new Bundle();
                                     extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
                                     extras.putBoolean(ContentResolver.SYNC_EXTRAS_OVERRIDE_TOO_MANY_DELETIONS, true);
                                     ContentResolver.requestSync(new Account(), CalendarContract.Authority, extras);*/
+                                    }
+                                    cursor.moveToNext();
                                 }
-                                cursor.moveToNext();
                             }
+                            cursor.close();
                         }
-                        Intent intent=new Intent();
                         interfaceHandler.show("cleared edit calender",mainA);
                     ContentResolver.setMasterSyncAutomatically(false);
                     //interfaceHandler.note("cleared calender");
@@ -227,13 +285,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        fab2.bringToFront();
+        clear.bringToFront();
 
-        interfaceHandler.update(Calendar2.actions.com,"requestStatus","",this);
-        if(islistening) {
-            findViewById(R.id.fab).getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
-        }
-        final TextView lastCheck = (TextView)findViewById(R.id.textViewChecked);
+
+        final TextView lastCheck = findViewById(R.id.textViewChecked);
         lastCheck.setSingleLine(false);
         String lastC= interfaceHandler.get(vars.lastChecked,this);
         if(lastC!=null){
@@ -243,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void mailpwfields(){
 
-        final EditText Email = (EditText)findViewById(R.id.email);
+        final EditText Email = findViewById(R.id.email);
         Email.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -260,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
         });
         Email.setText(interfaceHandler.get(vars.mail,this));
 
-        final EditText pw = (EditText)findViewById(R.id.password);
+        final EditText pw = findViewById(R.id.password);
         pw.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -277,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
         });
         pw.setText( interfaceHandler.get(vars.password,this));
 
-        final EditText basmail = (EditText)findViewById(R.id.editText5);
+        final EditText basmail = findViewById(R.id.editText5);
         basmail.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -294,15 +349,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         basmail.setText( interfaceHandler.get(vars.basMail,this));
-
-
-        final TextView tF=(TextView)findViewById(R.id.textViewThreads);
-        Map<Thread,StackTraceElement[]> sT=Thread.getAllStackTraces();
-        String threads="";
     }
     private void calenderSpinner(){
 
-        final Spinner calender=(Spinner)findViewById(R.id.spinner2);
+        final Spinner calender= findViewById(R.id.spinner2);
         calender.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -333,8 +383,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-    private String accountsSpinner(){
-        final Spinner accounts=(Spinner)findViewById(R.id.spinner);
+    private void accountsSpinner(){
+        final Spinner accounts= findViewById(R.id.spinner);
         final boolean[] nextAccounts = {true};
         accounts.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -349,8 +399,6 @@ public class MainActivity extends AppCompatActivity {
                         final String[] filter = new String[]{CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.CALENDAR_DISPLAY_NAME};
                         Cursor cursor = getBaseContext().getContentResolver().query(Uri.parse("content://com.android.calendar/calendars"), filter, null, null, null, null);
                         ArrayList<String> cals2 = new ArrayList<>();
-
-
                         if (cursor != null) {
                             while (cursor.moveToNext()) {
                                 String accN = cursor.getString(0);
@@ -359,9 +407,10 @@ public class MainActivity extends AppCompatActivity {
                                     cals2.add(calenderS);
                                 }
                             }
+                            cursor.close();
                         }
                         cals2.add("choose one");
-                        Spinner calender = (Spinner) findViewById(R.id.spinner2);
+                        Spinner calender = findViewById(R.id.spinner2);
 
                         ArrayAdapter<String> aA = new ArrayAdapter<>(getBaseContext(), android.R.layout.simple_spinner_item, cals2);
                         calender.setSelection(aA.getCount() - 1);
@@ -399,6 +448,7 @@ public class MainActivity extends AppCompatActivity {
                     cals.add(accN);
                 }
             }
+            cursor.close();
         }
         cals.add("choose one");
         ArrayAdapter<String> ad= new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, cals);
@@ -409,12 +459,11 @@ public class MainActivity extends AppCompatActivity {
             if(spinnerPosition!=-1) {
                 nextAccounts[0] =false;
                 accounts.setSelection(spinnerPosition);
-                return compareValue;
+                return;
             }
         }
         nextAccounts[0] =false;
         accounts.setSelection(ad.getCount()-1);
-        return null;
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -439,8 +488,17 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void checkMail(){
-        interfaceHandler.update(Calendar2.actions.check,"",this);
+
+        MailScheduler.startInNewThread(this);
     }
 
+    public static class Holder extends RecyclerView.ViewHolder {
 
+        public TextView textView;
+
+        Holder(TextView v){
+            super(v);
+            textView = v;
+        }
+    }
 }

@@ -5,9 +5,11 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.provider.CalendarContract;
 import android.support.v4.app.ActivityCompat;
 
+import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -42,7 +44,7 @@ public class CalendarEvent {
 
     }
 
-    static CalendarEvent parse(String eventInICS) {
+    static CalendarEvent parse(String eventInICS,Context context) {
         String[] eventattributes = eventInICS.split("\r\n");
         CalendarEvent cE=new CalendarEvent();
         try{
@@ -88,13 +90,13 @@ public class CalendarEvent {
                         }
                     }catch(IndexOutOfBoundsException ioobe){
                         ioobe.printStackTrace();
-                        interfaceHandler.note("Exception","calender :  "+ ioobe.getMessage());
+                        interfaceHandler.note("Exception","calender :  "+ ioobe.getMessage(),context);
                     }
                 }
             }
         }catch(IndexOutOfBoundsException ioobe){
             ioobe.printStackTrace();
-            interfaceHandler.note("Exception","calender : "+" "+ ioobe.getMessage());
+            interfaceHandler.note("Exception","calender : "+" "+ ioobe.getMessage(),context);
         }
         return  cE;
     }
@@ -120,8 +122,7 @@ public class CalendarEvent {
 
             Cursor crs=cr.query(CalendarContract.Events.CONTENT_URI,null,CalendarContract.Events.UID_2445 +" LIKE ?",new String[]{uuid},null);
             int count=0;
-            while(!crs.isLast()){
-                crs.moveToNext();
+            while(crs.moveToNext()){
                 count++;
             }
             String[] columns=crs.getColumnNames();
@@ -138,7 +139,6 @@ public class CalendarEvent {
         }
         if(!title.contains("Abgesagt")&& reftime==null) {
             ContentValues values = new ContentValues();
-
             values.put(CalendarContract.Events.DTSTART, startMillis);
             values.put(CalendarContract.Events.DTEND, endMillis);
             values.put(CalendarContract.Events.TITLE, title);
@@ -149,11 +149,34 @@ public class CalendarEvent {
 
             values.put(CalendarContract.Events.UID_2445, uuid);
             if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
-                interfaceHandler.note("missing perm");
+                interfaceHandler.note("missing perm",context);
                 return;
             }
             System.out.println("committing");
-            cr.insert(CalendarContract.Events.CONTENT_URI, values);
+            Uri uri= cr.insert(CalendarContract.Events.CONTENT_URI, values);
+            if(beginTime.get(Calendar.HOUR_OF_DAY)<10&&!title.equals("Ausbildungsnachweis")&&!title.equals("PrintKalender")&&allDay==false){
+                ContentValues reminder = new ContentValues();
+                reminder.put(CalendarContract.Reminders.MINUTES,60);
+                reminder.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
+                reminder.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
+                cr.insert(CalendarContract.Reminders.CONTENT_URI,reminder);
+
+                Calendar dayBefore=Calendar.getInstance();
+                dayBefore.setTimeInMillis(startMillis);
+                dayBefore.set(Calendar.DAY_OF_YEAR,dayBefore.get(Calendar.DAY_OF_YEAR)-1);
+                dayBefore.set(Calendar.HOUR_OF_DAY,22);
+
+                long difference= beginTime.getTimeInMillis()-dayBefore.getTimeInMillis();
+                int minutes=Math.round(difference/(60*1000));
+
+
+                ContentValues reminder2 = new ContentValues();
+                reminder2.put(CalendarContract.Reminders.MINUTES,minutes);
+                reminder2.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
+                reminder2.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
+                cr.insert(CalendarContract.Reminders.CONTENT_URI,reminder2);
+
+            }
         }
     }
     public void save(int calID, Context context){
@@ -188,8 +211,12 @@ public class CalendarEvent {
                             addition = repInterval * 1000 * 60 * 60 * 24 * 7;
                         }
                         break;
+                    case "MONTHLY":
+                        //not saving so far anyways
+                        //addition = repInterval * 1000 * 60 * 60 * 24*31;
+                        break;
                     default:
-                        System.out.println("unimplemented repetion type" + repType);
+                        interfaceHandler.note("unimplemented repetion type" + repType,context);
                         break;
                 }
                 startMillis+=addition;

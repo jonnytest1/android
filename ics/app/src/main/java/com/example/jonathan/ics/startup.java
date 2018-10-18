@@ -3,9 +3,8 @@ package com.example.jonathan.ics;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 
-import static android.support.v4.content.WakefulBroadcastReceiver.startWakefulService;
+import static com.example.jonathan.ics.MailScheduler.registerScheduler;
 
 /**
  * Created by Jonathan on 24.04.2018.
@@ -22,8 +21,9 @@ public class startup extends BroadcastReceiver {
             e.printStackTrace();
         }
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            Intent serviceIntent = new Intent( context , Calendar2.class);
-            context.startService(serviceIntent);
+            //Intent serviceIntent = new Intent( context , Calendar2.class);
+           // context.startService(serviceIntent);
+           registerScheduler(context);
         }
     }
 }

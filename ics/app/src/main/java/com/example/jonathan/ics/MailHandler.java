@@ -1,58 +1,37 @@
 package com.example.jonathan.ics;
 
-import android.Manifest;
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
-import android.support.v4.app.ActivityCompat;
-import android.util.Log;
 
 import net.fortuna.ical4j.data.CalendarBuilder;
-import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.ComponentList;
-import net.fortuna.ical4j.model.Property;
-import net.fortuna.ical4j.model.ValidationException;
 import net.fortuna.ical4j.model.component.VEvent;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
-import java.util.Properties;
 
-import javax.mail.Flags;
-import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
-import javax.mail.NoSuchProviderException;
 import javax.mail.Part;
-import javax.mail.Session;
-import javax.mail.Store;
-import javax.mail.event.MessageCountEvent;
-import javax.mail.event.MessageCountListener;
 import javax.mail.internet.MimeBodyPart;
 
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
-import static com.example.jonathan.ics.Calendar2.EVENT_PROJECTION;
+import static com.example.jonathan.ics.MainActivity.EVENT_PROJECTION;
 
 public class MailHandler {
 
-
-
     Context context;
+
     MailHandler(Context context){
         this.context=context;
     }
-
-
-
 
     void update(){
         Calendar now = Calendar.getInstance();
@@ -62,54 +41,46 @@ public class MailHandler {
     }
     void checkMails(Message[] messages) {
         System.out.println("checking mails");
-        int n = messages.length;
         String basMail=interfaceHandler.get(MainActivity.vars.basMail,context);
         if(basMail==null){
-            interfaceHandler.update(MainActivity.actions.OnError,"basMail is null",context);
+            interfaceHandler.note("basMail is null",context);
             return;
         }
-        for (int i = n - 1; i >= 0; i--) {
-            Message message = messages[i];
+        for (Message message: messages) {
             try {
-                if (message.getFrom()[0].toString().toLowerCase().contains(basMail.toLowerCase()) && message.getSubject().contains("Kalender von")) {
-                    String contentType = message.getContentType();
-                    if (contentType.contains("multipart")) {
-
+                if (message.getFrom()[0].toString().toLowerCase().contains(basMail.toLowerCase())
+                            && message.getSubject().contains("Kalender von")
+                                    && message.getContentType().contains("multipart")) {
                         Multipart multiPart = (Multipart) message.getContent();
-
                         for (int x = 0; x < multiPart.getCount(); x++) {
                             MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(x);
                             if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
                                 InputStream is = part.getInputStream();
                                 CalendarBuilder builder=new CalendarBuilder();
                                 net.fortuna.ical4j.model.Calendar calendar=builder.build(is);
-
-                                try {
-                                    saveCalender(calendar,clear());
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
-                                }
+                                saveCalender(calendar,clear());
+                                break;
                             }
                         }
-
                         return;
-                    }
                 }
             } catch (MessagingException | IOException e) {
+                interfaceHandler.push(MainActivity.vars.log,"Messageing Exception in mail Handler",context);
                 e.printStackTrace();
-                System.out.println(e);
             }catch(Exception e){
+                interfaceHandler.push(MainActivity.vars.log,"Other Exception in mail Handler",context);
                 e.printStackTrace();
             }
         }
-        interfaceHandler.update(MainActivity.actions.OnError,"emails not from correct mail double Check basMail",context);
+        interfaceHandler.note("emails not from correct mail or wrongly formated double Check basMail", context);
     }
-    void saveCalender(net.fortuna.ical4j.model.Calendar calendar, int calID) throws ParseException {
+    void saveCalender(net.fortuna.ical4j.model.Calendar calendar, int calID)  {
         ComponentList cs = calendar.getComponents();
         System.out.println("saving to calender");
         for (Object c: cs) {
             if (c instanceof VEvent) {
-                CalendarEvent cEvent=CalendarEvent.parse(c.toString());
+                CalendarEvent cEvent=CalendarEvent.parse(c.toString(),context);
+                System.out.println("parsed");
                 cEvent.save(calID,context);
             }
         }
@@ -140,23 +111,22 @@ public class MailHandler {
         cursor = context.getContentResolver().query(Uri.parse("content://com.android.calendar/calendars"), EVENT_PROJECTION, selection, selectionArgs, null, null);
         if (cursor != null) {
             cursor.moveToFirst();
-        }
+            if ( cursor.getCount() > 0) {
+                while (!cursor.isAfterLast()) {
+                    if (cursor.getString(cursor.getColumnIndex("calendar_displayName")).equals(calenderToDelete)) {
 
-
-        if (cursor != null && cursor.getCount() > 0) {
-            while (!cursor.isAfterLast()) {
-                if (cursor.getString(cursor.getColumnIndex("calendar_displayName")).equals(calenderToDelete)) {
-
-                    Uri CALENDAR_URI = Uri.parse("content://com.android.calendar/events");
-                    int calenderID = cursor.getInt(cursor.getColumnIndex("_id"));
-                    context.getContentResolver().delete(CALENDAR_URI, "calendar_id=" + calenderID, null);
-                    ContentResolver.setMasterSyncAutomatically(false);
-                    //interfaceHandler.note("cleared mail folder");
-                    ContentResolver.setMasterSyncAutomatically(true);
-                    return calenderID;
+                        Uri CALENDAR_URI = Uri.parse("content://com.android.calendar/events");
+                        int calenderID = cursor.getInt(cursor.getColumnIndex("_id"));
+                        context.getContentResolver().delete(CALENDAR_URI, "calendar_id=" + calenderID, null);
+                        ContentResolver.setMasterSyncAutomatically(false);
+                        //interfaceHandler.note("cleared mail folder");
+                        ContentResolver.setMasterSyncAutomatically(true);
+                        return calenderID;
+                    }
+                    cursor.moveToNext();
                 }
-                cursor.moveToNext();
             }
+            cursor.close();
         }
         ContentResolver.setMasterSyncAutomatically(false);
         //interfaceHandler.note("cleared mail folder");
@@ -164,7 +134,7 @@ public class MailHandler {
         return -1;
     }
 
-    public void save(VEvent event,int calID,Context context){
+    /*public void save(VEvent event,int calID,Context context){
         ContentResolver cr = context.getContentResolver();
         if(event.getSummary()==null){
             System.out.println(event.toString());
@@ -215,5 +185,5 @@ public class MailHandler {
             System.out.println("committing");
             cr.insert(CalendarContract.Events.CONTENT_URI, values);
         }
-    }
+    }*/
 }

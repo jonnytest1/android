@@ -1,52 +1,21 @@
 package com.example.jonathan.ics;
 
-import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Environment;
-import android.provider.CalendarContract;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.widget.ProgressBar;
 
 import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Calendar;
-import net.fortuna.ical4j.model.Component;
-import net.fortuna.ical4j.model.ComponentList;
-import net.fortuna.ical4j.model.component.VEvent;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
-import java.text.ParseException;
+import java.nio.charset.StandardCharsets;
 
-import javax.activation.DataHandler;
-import javax.activation.DataSource;
-import javax.activation.FileDataSource;
-import javax.mail.Flags;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.Part;
-import javax.mail.Session;
-import javax.mail.internet.AddressException;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
-
-import static com.example.jonathan.ics.Calendar2.EVENT_PROJECTION;
 
 public class icsmanual extends AppCompatActivity {
     ProgressBar progressBAr=null;
@@ -59,44 +28,48 @@ public class icsmanual extends AppCompatActivity {
 
         Intent intent = getIntent();
         String action = intent.getAction();
-        String type = intent.getType();
-        progressBAr = (ProgressBar) findViewById(R.id.progressBar);
-        if (Intent.ACTION_VIEW.equals(action))
+        progressBAr = findViewById(R.id.progressBar);
+        if (Intent.ACTION_VIEW.equals(action)&&intent.getType().equals("text/calendar"))
         {
+            progressBAr.setProgress(1);
             Uri path=intent.getData();
             Calendar calendar=null;
             try {
-                    InputStream is=getContentResolver().openInputStream(path);
-                    CalendarBuilder builder=new CalendarBuilder();
+                //&&path.toString().endsWith(".ics") gerts saved to inernal file with random name
+                if(path!=null) {
+                    InputStream is = getContentResolver().openInputStream(path);
+                    if(is!=null) {
+                        StringBuilder cal = new StringBuilder();
+                        int t = is.read();
+                        while (t != -1) {
+                            cal.append(String.valueOf((char) t));
+                            t = is.read();
+                        }
+                        CalendarBuilder builder = new CalendarBuilder();
 
-                    try {
-                        calendar=builder.build(is);
-                    } catch (ParserException e) {
-                        e.printStackTrace();
+                        try {
+                            calendar = builder.build(new ByteArrayInputStream(cal.toString().getBytes(StandardCharsets.UTF_8)));
+                        } catch (ParserException e) {
+                            progressBAr.setBackgroundColor(Color.RED);
+                            e.printStackTrace();
+                            interfaceHandler.note("Exception", e.getMessage(),getBaseContext());
+                        }
+                        progressBAr.setProgress(10);
                     }
-                progressBAr.setProgress(10);
-            } catch (IOException e) {
-                e.printStackTrace();
-                interfaceHandler.note("Exception",e.getMessage());
-            }
-            try {
-                try {
                     MailHandler mailHandler=new MailHandler(getBaseContext());
                     progressBAr.setProgress(40);
                     int calendarIndex=mailHandler.clear();
                     progressBAr.setProgress(60);
                     mailHandler.saveCalender(calendar,calendarIndex);
                     progressBAr.setProgress(100);
-                } catch (ParseException e) {
-                    progressBAr.setProgress(100);
-                    progressBAr.setBackgroundColor(Color.RED);
-                    e.printStackTrace();
-                    interfaceHandler.note("Exception",e.getMessage());
                 }
-
-            }catch (Exception e){
+            } catch (IOException e) {
                 e.printStackTrace();
-                interfaceHandler.note("Exception",e.getMessage());
+                interfaceHandler.note("Exception",e.getMessage(),getBaseContext());
+            }catch (Exception e){
+                progressBAr.setBackgroundColor(Color.RED);
+                e.printStackTrace();
+                interfaceHandler.note("Exception",e.getMessage(),getBaseContext());
             }
         }
     }

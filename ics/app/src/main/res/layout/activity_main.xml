@@ -262,19 +262,20 @@
             </TableRow>
 
             <TableRow
+                android:id="@+id/schedulerRow"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 tools:layout_editor_absoluteX="8dp"
                 tools:layout_editor_absoluteY="8dp">
 
                 <TextView
-                    android:id="@+id/textView2"
+                    android:id="@+id/scheduler"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="running threads" />
+                    android:text="is in scheduler" />
 
                 <TextView
-                    android:id="@+id/textViewThreads"
+                    android:id="@+id/schedulerValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
@@ -287,25 +288,63 @@
             android:id="@+id/constraintLayout"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginLeft="8dp"
-            android:layout_marginRight="8dp"
-            android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
+            android:layout_marginRight="8dp"
+            android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/toolbar">
 
+            <android.support.constraint.ConstraintLayout
+                android:id="@+id/consoleLayout"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@color/cardview_light_background"
+                android:visibility="visible"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:id="@+id/linear"
+                    android:layout_width="match_constraint"
+                    android:layout_height="0dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:gravity="left"
+                    android:orientation="vertical"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        android:id="@+id/textView5as"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="asdfsdfs" />
+
+                    <TextView
+                        android:id="@+id/textView4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="sdfsdf" />
+                </LinearLayout>
+
+            </android.support.constraint.ConstraintLayout>
+
         </android.support.constraint.ConstraintLayout>
 
         <android.support.design.widget.FloatingActionButton
-            android:id="@+id/fab"
+            android:id="@+id/refresh"
             android:layout_width="54dp"
             android:layout_height="54dp"
             android:layout_marginBottom="16dp"
-            android:layout_marginEnd="16dp"
             android:layout_marginRight="16dp"
             android:clickable="true"
             android:foregroundGravity="center"
