@@ -1,4 +1,4 @@
-package com.example.jonathan.ics;
+package com.example.jonathan.ics.services.invokers;
 
 import android.app.job.JobInfo;
 import android.app.job.JobParameters;
@@ -7,26 +7,34 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 
+import com.example.jonathan.ics.Activities.main.SettingsActivity;
+import com.example.jonathan.ics.services.MailServerService;
+import com.example.jonathan.ics.util.interfaceHandler;
+
 import java.util.Date;
 
-public class MailScheduler extends JobService {
+public class SchedulerMail extends JobService {
     @Override
     public boolean onStartJob(JobParameters params) {
-
-        interfaceHandler.pushLog("scheduler: " + new Date().toLocaleString(),getBaseContext());
-        startInNewThread(getBaseContext());
-        return false;
+        try {
+            interfaceHandler.getStorage().log("scheduler: " + new Date().toLocaleString());
+            startInNewThread(getBaseContext());
+            return false;
+        }catch(Exception e){
+            interfaceHandler.getStorage().log(e);
+            return false;
+        }
     }
     public static void startInNewThread(final Context context){
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    NetworkHandler networkHandler = new NetworkHandler(context);
-                    networkHandler.connect();
-                    interfaceHandler.update(MainActivity.actions.finished, new Date().toLocaleString(), context);
+                    MailServerService mailServerService = new MailServerService(context);
+                    mailServerService.checkMails();
+                    interfaceHandler.update(SettingsActivity.actions.finished, new Date().toLocaleString(), context);
                 }catch(Exception e){
-                    interfaceHandler.pushLog(e,context);
+                    interfaceHandler.getStorage().log(e);
                 }
             }
         }).start();
@@ -37,7 +45,7 @@ public class MailScheduler extends JobService {
     }
 
     static JobInfo createScheduledJob(Context context){
-        ComponentName serviceComponent = new ComponentName(context,MailScheduler.class );
+        ComponentName serviceComponent = new ComponentName(context,SchedulerMail.class );
         JobInfo.Builder builder=new JobInfo.Builder(1234,serviceComponent);
         int waitMin=15;
         // builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED);
@@ -48,7 +56,7 @@ public class MailScheduler extends JobService {
     public static boolean registerScheduler(Context context){
         JobScheduler scheduler=context.getSystemService(JobScheduler.class);
         if(scheduler==null){
-            interfaceHandler.note("failed getting schedulerService",context);
+            interfaceHandler.note("failed getting schedulerService");
             return false;
         }
         if(scheduler.getPendingJob(1234)==null){

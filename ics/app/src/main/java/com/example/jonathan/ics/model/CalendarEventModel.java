@@ -1,29 +1,25 @@
-package com.example.jonathan.ics;
+package com.example.jonathan.ics.model;
 
-import android.Manifest;
-import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
-import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
-import android.support.v4.app.ActivityCompat;
 
-import java.net.URL;
+import com.example.jonathan.ics.util.interfaceHandler;
+
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
-
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 /**
  * Created by Jonathan on 27.04.2018.
  */
 
-public class CalendarEvent {
+public class CalendarEventModel {
 
     private long startMillis = 0;
     private long endMillis = 0;
@@ -40,13 +36,13 @@ public class CalendarEvent {
     private String repDays = null;
     private String uuid=null;
     private Calendar reftime=null;
-    private CalendarEvent(){
+    private CalendarEventModel(){
 
     }
 
-    static CalendarEvent parse(String eventInICS,Context context) {
+    public static CalendarEventModel parse(String eventInICS) {
         String[] eventattributes = eventInICS.split("\r\n");
-        CalendarEvent cE=new CalendarEvent();
+        CalendarEventModel cE=new CalendarEventModel();
         try{
             for (int i3 = 0; i3 < eventattributes.length; i3++) {
                 String att = eventattributes[i3];
@@ -90,18 +86,19 @@ public class CalendarEvent {
                         }
                     }catch(IndexOutOfBoundsException ioobe){
                         ioobe.printStackTrace();
-                        interfaceHandler.note("Exception","calender :  "+ ioobe.getMessage(),context);
+                        interfaceHandler.getStorage().log(ioobe);
                     }
                 }
             }
         }catch(IndexOutOfBoundsException ioobe){
             ioobe.printStackTrace();
-            interfaceHandler.note("Exception","calender : "+" "+ ioobe.getMessage(),context);
+            interfaceHandler.getStorage().log(ioobe);
         }
         return  cE;
     }
-    private void toData(int calID, Context context){
-        ContentResolver cr = context.getContentResolver();
+    private List<ContentValues> toData(int calID ){
+
+        List<ContentValues> eventList=new ArrayList<>();
         if(uuid!=""&&uuid!=null&&reftime!=null){
             ContentValues values = new ContentValues();
             try{
@@ -119,23 +116,7 @@ public class CalendarEvent {
             }catch (NullPointerException e){
 
             }
-
-            Cursor crs=cr.query(CalendarContract.Events.CONTENT_URI,null,CalendarContract.Events.UID_2445 +" LIKE ?",new String[]{uuid},null);
-            int count=0;
-            while(crs.moveToNext()){
-                count++;
-            }
-            String[] columns=crs.getColumnNames();
-            for(String column:columns){
-              //  System.out.println(column+" "+crs.getString(crs.getColumnIndex(column)));
-            }
-            System.out.println("amount : "+count);
-            String[] selectionArgs =new String[]{calID+"",uuid,reftime.getTimeInMillis()+""};
-            cr.update(CalendarContract.Events.CONTENT_URI,values,CalendarContract.Events.CALENDAR_ID+ " LIKE ? AND "
-                    + CalendarContract.Events.UID_2445 +" LIKE ? AND "
-                    + CalendarContract.Events.DTSTART +" LIKE ? ",selectionArgs);
-
-
+            eventList.add(values);
         }
         if(!title.contains("Abgesagt")&& reftime==null) {
             ContentValues values = new ContentValues();
@@ -148,38 +129,43 @@ public class CalendarEvent {
             values.put(CalendarContract.Events.EVENT_TIMEZONE, "EST");
 
             values.put(CalendarContract.Events.UID_2445, uuid);
-            if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
-                interfaceHandler.note("missing perm",context);
-                return;
-            }
-            System.out.println("committing");
-            Uri uri= cr.insert(CalendarContract.Events.CONTENT_URI, values);
-            if(beginTime.get(Calendar.HOUR_OF_DAY)<10&&!title.equals("Ausbildungsnachweis")&&!title.equals("PrintKalender")&&allDay==false){
-                ContentValues reminder = new ContentValues();
-                reminder.put(CalendarContract.Reminders.MINUTES,60);
-                reminder.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
-                reminder.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
-                cr.insert(CalendarContract.Reminders.CONTENT_URI,reminder);
-
-                Calendar dayBefore=Calendar.getInstance();
-                dayBefore.setTimeInMillis(startMillis);
-                dayBefore.set(Calendar.DAY_OF_YEAR,dayBefore.get(Calendar.DAY_OF_YEAR)-1);
-                dayBefore.set(Calendar.HOUR_OF_DAY,22);
-
-                long difference= beginTime.getTimeInMillis()-dayBefore.getTimeInMillis();
-                int minutes=Math.round(difference/(60*1000));
-
-
-                ContentValues reminder2 = new ContentValues();
-                reminder2.put(CalendarContract.Reminders.MINUTES,minutes);
-                reminder2.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
-                reminder2.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
-                cr.insert(CalendarContract.Reminders.CONTENT_URI,reminder2);
-
-            }
+            eventList.add(values);
         }
+        return eventList;
     }
-    public void save(int calID, Context context){
+
+    public List<ContentValues> getReminders(Uri uri) {
+        List<ContentValues> eventList=new ArrayList<>();
+        ContentValues reminder = new ContentValues();
+        reminder.put(CalendarContract.Reminders.MINUTES,60);
+        reminder.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
+        reminder.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
+        eventList.add(reminder);
+
+        Calendar dayBefore=Calendar.getInstance();
+        dayBefore.setTimeInMillis(startMillis);
+        dayBefore.set(Calendar.DAY_OF_YEAR,dayBefore.get(Calendar.DAY_OF_YEAR)-1);
+        dayBefore.set(Calendar.HOUR_OF_DAY,22);
+
+        long difference= beginTime.getTimeInMillis()-dayBefore.getTimeInMillis();
+        int minutes=Math.round(difference/(60*1000));
+
+
+        ContentValues reminder2 = new ContentValues();
+        reminder2.put(CalendarContract.Reminders.MINUTES,minutes);
+        reminder2.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
+        reminder2.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
+        eventList.add(reminder2);
+        return eventList;
+    }
+    public boolean needsReminders(){
+        return beginTime.get(Calendar.HOUR_OF_DAY)<10 &&
+                !title.equals("Ausbildungsnachweis")&&
+                !title.equals("PrintKalender")&&allDay==false;
+    }
+
+    public List<ContentValues> getEvents(int calID){
+        List<ContentValues> events=new ArrayList<>();
         for(int i4=0;i4<repAMount;i4++){
             if(repDays!=null){
                 Calendar day= Calendar.getInstance();
@@ -190,12 +176,12 @@ public class CalendarEvent {
                         (repDays.contains("WE")&&today==Calendar.WEDNESDAY)||
                         (repDays.contains("TH")&&today==Calendar.THURSDAY)||
                         (repDays.contains("FR")&&today==Calendar.FRIDAY)){
-                    toData(calID,context);
+                    events.addAll(toData(calID));
                 }else{
                     i4--;
                 }
             }else{
-                toData(calID,context);
+                events.addAll(toData(calID));
             }
 
             if(repType!=null){
@@ -216,14 +202,14 @@ public class CalendarEvent {
                         //addition = repInterval * 1000 * 60 * 60 * 24*31;
                         break;
                     default:
-                        interfaceHandler.note("unimplemented repetion type" + repType,context);
+                        interfaceHandler.getStorage().log("unimplemented repetion type" + repType);
                         break;
                 }
                 startMillis+=addition;
                 endMillis+=addition;
             }
         }
-        System.out.println("finished this event");
+        return events;
     }
     private static Date parseDate(String dateStr){
         DateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.GERMAN);
@@ -325,5 +311,13 @@ public class CalendarEvent {
 
     public void setRepDays(String repDays) {
         this.repDays = repDays;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public Calendar getReftime() {
+        return reftime;
     }
 }

@@ -23,32 +23,36 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <receiver
-            android:name=".startup"
+            android:name=".services.invokers.startup"
             android:exported="true">
-            >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".Activities.main.SettingsActivity"
             android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
+
+        </activity>
+        <activity
+            android:name=".Activities.log.LogActivity"
+            android:label="@string/title_activity_log"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
         <service
-            android:name=".MailScheduler"
+            android:name=".services.invokers.SchedulerMail"
             android:label="Word service"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <activity
-            android:name=".icsmanual"
+            android:name=".services.invokers.CalndarFromFileService"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -72,10 +76,6 @@
             </intent-filter>*/*
             -->
         </activity>
-        <activity
-            android:name=".LogActivity"
-            android:label="@string/title_activity_log"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 
 </manifest>

@@ -1,7 +1,11 @@
-package com.example.jonathan.ics;
+package com.example.jonathan.ics.services;
 
 import android.content.ContentResolver;
 import android.content.Context;
+
+import com.example.jonathan.ics.Activities.main.SettingsActivity;
+import com.example.jonathan.ics.util.interfaceHandler;
+import com.example.jonathan.ics.util.storage.Storage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,14 +23,14 @@ import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.internet.MimeBodyPart;
 
-public class NetworkHandler {
+public class MailServerService {
 
     Context context;
     private MailHandler mailHandler;
 
 
 
-    NetworkHandler(Context context){
+    public MailServerService(Context context){
         this.context=context;
         mailHandler=new MailHandler(context);
     }
@@ -34,10 +38,10 @@ public class NetworkHandler {
     private Store getStore() throws MessagingException {
         try {
             String host = "imap.gmail.com";// change accordingly
-            String user = interfaceHandler.get(MainActivity.vars.mail, context);
-            String password = interfaceHandler.get(MainActivity.vars.password, context);
+            String user = interfaceHandler.getStorage().get(Storage.storageVariables.mail);
+            String password = interfaceHandler.getStorage().get(Storage.storageVariables.password);
             if (user == null || password == null) {
-                interfaceHandler.note("password or username is null", context);
+                interfaceHandler.note("password or username is null");
                 throw new RuntimeException("password or username is nul");
             }
             Properties properties = new Properties();
@@ -53,8 +57,8 @@ public class NetworkHandler {
             store.connect(host, user, password);
             return store;
         }catch(AuthenticationFailedException e){
-            interfaceHandler.pushLog(e,context);
-            interfaceHandler.update(MainActivity.actions.OnError,"invalid username password",context);
+            interfaceHandler.getStorage().log(e);
+            interfaceHandler.update(SettingsActivity.actions.OnError,"invalid username password",context);
             throw e;
         } catch(MessagingException e){
             e.printStackTrace();
@@ -68,26 +72,24 @@ public class NetworkHandler {
         return fodler;
     }
 
-
-
-    void connect(){
+    public void checkMails(){
         try {
             Store store=getStore();
             Folder emailFolder=getFolder(store);
             Message[] msg = emailFolder.getMessages();
             if (msg.length > 0 && !msg[msg.length - 1].getFlags().contains(Flags.Flag.SEEN)) {
-                interfaceHandler.note("found new",context);
-                mailHandler.checkMails(new Message[]{msg[msg.length - 1]});
-                interfaceHandler.pushLog("NEW emails \t"+new Date().toLocaleString(),context);
+                interfaceHandler.note("found new");
+                mailHandler.handleMessages(msg[msg.length - 1]);
+                interfaceHandler.getStorage().log("NEW emails \t"+new Date().toLocaleString());
             }else{
-                interfaceHandler.pushLog("no new emails \t"+new Date().toLocaleString(),context);
+                interfaceHandler.getStorage().log("no new emails \t"+new Date().toLocaleString());
             }
             setSeen(emailFolder, msg);
             refreshWidget();
         } catch (MessagingException e) {
-            interfaceHandler.pushLog(e,context);
+            interfaceHandler.getStorage().log(e);
         }catch (Exception e){
-            interfaceHandler.pushLog(e,context);
+            interfaceHandler.getStorage().log(e);
         }
     }
 
