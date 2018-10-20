@@ -12,10 +12,14 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.view.Gravity;
 import android.view.View;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Created by Jonathan on 28.04.2018.
@@ -36,65 +40,60 @@ public class interfaceHandler {
         params.gravity = Gravity.TOP;
         view.setLayoutParams(params);
         snack.show();
-        //Snackbar.make(findViewById(R.id.toolbar), msg,Snackbar.LENGTH_LONG).show();
+        Snackbar.make(activity.findViewById(R.id.toolbar), msg,Snackbar.LENGTH_LONG).show();
     }
     public static void show(String msg, View.OnClickListener okButton,Activity activity){
         Snackbar.make(activity.findViewById(R.id.toolbar), msg,Snackbar.LENGTH_LONG).setAction("OK",okButton).show();
     }
 
-    public static void write(MainActivity.vars key, Object value, Context context){
-        if(sP==null){
-            sP=context.getSharedPreferences("data", Context.MODE_PRIVATE);
-        }
+    public static void write(MainActivity.vars key, String value, Context context){
+        setSp(context);
         if(key.equals(MainActivity.vars.log)) {
             update(MainActivity.actions.logUpdate,"",context);
-        }else{
-           // push(MainActivity.vars.log, "saved " + key + " to " + value, context);
         }
         SharedPreferences.Editor editor = sP.edit();
-        if(value instanceof String) {
-            editor.putString(key.toString(),(String) value);
-        }else if(value instanceof Set<?>){
-            Set<?> set=(Set<?>) value;
-            editor.putStringSet(key.toString(),set.stream().map(t->((Object) t).toString()).collect(Collectors.toSet()));
-        }else {
-            note("wrong input type for write",context);
-        }
+        editor.putString(key.toString(),value);
 
+        editor.commit();
         editor.apply();
     }
-    public static void push(Throwable value,Context context){
-        MainActivity.vars key=MainActivity.vars.log;
-        Set<String> currentLog=getLog(context);
-        currentLog.add(value.getMessage()+"\n"+Arrays.stream(value.getStackTrace()).map(sE->sE.toString()).collect(Collectors.joining("\n")));
-        write(key,currentLog,context);
-
+    public static void pushLog(LoggingElement value,Context context){
+        List<LoggingElement> currentLog=getLog(context);
+        Collections.reverse(currentLog);
+        currentLog.add(value);
+        Collections.reverse(currentLog);
+        write(MainActivity.vars.log,new Gson().toJson(currentLog),context);
     }
-    public static void push(MainActivity.vars key, String value,Context context){
-        String now= Arrays.stream(get(key,context).split("\n")).limit(20).collect(Collectors.joining("\n"));
-        if(now==null){
-            write(key,value,context);
-        }else{
-            write(key,value+"\n"+now,context);
-        }
+    public static void pushLog(String value,Context context){
+        pushLog(new LoggingElement(value),context);
+    }
+    public static void pushLog(Throwable value,Context context){
+        pushLog(new LoggingElement(value),context);
     }
 
-    public static Set<String> getLog(Context context){
-        if(sP==null){
-            sP=context.getSharedPreferences("data",Context.MODE_PRIVATE);
+    public static List<LoggingElement> getLog(Context context){
+        String logString=get(MainActivity.vars.log,context);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            List<LoggingElement> list=mapper.readValue(logString,new TypeReference<List<LoggingElement>>(){});
+            if(list.size()>0&& !(list.get(0) instanceof  LoggingElement)){
+                return new ArrayList<>();
+            }
+            return (List<LoggingElement>) list;
+        } catch (IOException | NullPointerException |ClassCastException e) {
+           return new ArrayList<>();
         }
-        return sP.getStringSet(MainActivity.vars.log.toString(),new HashSet<>());
     }
 
     public static String get(MainActivity.vars key,Context context){
-        if(sP==null){
-            sP=context.getSharedPreferences("data",Context.MODE_PRIVATE);
-        }
+        setSp(context);
         return sP.getString(key.toString(),null);
     }
+
     public  static  void note(String text,Context context){
         note(text,"",context);
     }
+
     public static void note(String text,String text2,Context context){
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context)
                 .setContentTitle(text);
@@ -103,21 +102,28 @@ public class interfaceHandler {
         mBuilder.setStyle(new NotificationCompat.BigTextStyle()
                 .bigText(text2));
         NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-
-// notificationID allows you to update the notification later on.
         int notificationID=200;
         if(mNotificationManager!=null){
-            push(MainActivity.vars.log,"note_ "+text,context);
+            if(!text.equals("wrong input type for write")) {
+                pushLog("note_ " + text, context);
+            }
             mNotificationManager.notify(notificationID, mBuilder.build());
         }else{
-            push(MainActivity.vars.log,"noteMAnage is null ?!",context);
+            pushLog("noteMAnage is null ?!",context);
         }
     }
+
     public static void update(Enum action ,String value,Context context){
         if(lBM==null){
             lBM=LocalBroadcastManager.getInstance(context);
         }
         lBM.sendBroadcast(new Intent(action.toString()).putExtra("value",value));
+    }
+
+    private static void setSp(Context context){
+        if(sP==null){
+            sP=context.getApplicationContext().getSharedPreferences("data",Context.MODE_PRIVATE);
+        }
     }
 
     public static LocalBroadcastManager getIBM(Context context){
@@ -126,5 +132,4 @@ public class interfaceHandler {
         }
         return lBM;
     }
-
 }

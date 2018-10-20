@@ -12,7 +12,8 @@ import java.util.Date;
 public class MailScheduler extends JobService {
     @Override
     public boolean onStartJob(JobParameters params) {
-        interfaceHandler.push(MainActivity.vars.log,"scheduler: "+new Date().toLocaleString(),getBaseContext());
+
+        interfaceHandler.pushLog("scheduler: " + new Date().toLocaleString(),getBaseContext());
         startInNewThread(getBaseContext());
         return false;
     }
@@ -25,7 +26,7 @@ public class MailScheduler extends JobService {
                     networkHandler.connect();
                     interfaceHandler.update(MainActivity.actions.finished, new Date().toLocaleString(), context);
                 }catch(Exception e){
-                    interfaceHandler.push(MainActivity.vars.log,e.getMessage(),context);
+                    interfaceHandler.pushLog(e,context);
                 }
             }
         }).start();

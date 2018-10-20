@@ -53,7 +53,7 @@ public class NetworkHandler {
             store.connect(host, user, password);
             return store;
         }catch(AuthenticationFailedException e){
-            interfaceHandler.push(MainActivity.vars.log,"Authentication Failure"+e.getMessage(),context);
+            interfaceHandler.pushLog(e,context);
             interfaceHandler.update(MainActivity.actions.OnError,"invalid username password",context);
             throw e;
         } catch(MessagingException e){
@@ -78,16 +78,16 @@ public class NetworkHandler {
             if (msg.length > 0 && !msg[msg.length - 1].getFlags().contains(Flags.Flag.SEEN)) {
                 interfaceHandler.note("found new",context);
                 mailHandler.checkMails(new Message[]{msg[msg.length - 1]});
-                interfaceHandler.push(MainActivity.vars.log,"NEW emails \t"+new Date().toLocaleString(),context);
+                interfaceHandler.pushLog("NEW emails \t"+new Date().toLocaleString(),context);
             }else{
-                interfaceHandler.push(MainActivity.vars.log,"no new emails \t"+new Date().toLocaleString(),context);
+                interfaceHandler.pushLog("no new emails \t"+new Date().toLocaleString(),context);
             }
             setSeen(emailFolder, msg);
             refreshWidget();
         } catch (MessagingException e) {
-            interfaceHandler.push(e,context);
+            interfaceHandler.pushLog(e,context);
         }catch (Exception e){
-            interfaceHandler.push(e,context);
+            interfaceHandler.pushLog(e,context);
         }
     }
 

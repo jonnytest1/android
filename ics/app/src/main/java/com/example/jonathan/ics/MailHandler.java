@@ -65,10 +65,10 @@ public class MailHandler {
                         return;
                 }
             } catch (MessagingException | IOException e) {
-                interfaceHandler.push(MainActivity.vars.log,"Messageing Exception in mail Handler",context);
+                interfaceHandler.pushLog("Messageing Exception in mail Handler",context);
                 e.printStackTrace();
             }catch(Exception e){
-                interfaceHandler.push(MainActivity.vars.log,"Other Exception in mail Handler",context);
+                interfaceHandler.pushLog("Other Exception in mail Handler",context);
                 e.printStackTrace();
             }
         }

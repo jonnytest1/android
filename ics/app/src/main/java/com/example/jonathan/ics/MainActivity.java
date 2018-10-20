@@ -14,7 +14,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
-import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -27,12 +26,10 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Set;
 
 import static com.example.jonathan.ics.MailScheduler.registerScheduler;
 import static com.example.jonathan.ics.R.id.refresh;
@@ -119,66 +116,24 @@ public class MainActivity extends AppCompatActivity {
 
     }
     private void setLogText(){
-
-        String t=null;
-        try{
-            t.getBytes();
-
-        }catch (NullPointerException e){
-            interfaceHandler.push(e,this);
-
-        }
-
-        //Spinner spinner=findViewById(R.id.spinner3);
-
-       Set<String> logs= interfaceHandler.getLog(this);
-        LinearLayout layout=findViewById(R.id.linear);
-
-        int pos=0;
-        for(String s:logs) {
-            TextView valueTV = new TextView(this);
-            valueTV.setText(pos+s.split("\n")[0]);
-            valueTV.setId(View.NO_ID);
-            valueTV.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT));
-
-            layout.addView(valueTV,pos++);
-        }
-
+        //TODO
 
     }
+
+    private void moveToLog(){
+        Intent k = new Intent(this, LogActivity.class);
+        startActivity(k);
+    }
+
 
     private void setConsoleListener() {
         View layout = findViewById(R.id.schedulerRow);
         layout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                View layout = findViewById(R.id.consoleLayout);
-                layout.setVisibility(View.VISIBLE);
-                setLogText();
-
+                moveToLog();
             }
         });
-        LinearLayout l=findViewById(R.id.linear);
-        l.setClickable(true);
-        l.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                View layout = findViewById(R.id.consoleLayout);
-                layout.setVisibility(View.INVISIBLE);
-            }
-        });
-
-        ConstraintLayout cL=findViewById(R.id.consoleLayout);
-        cL.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                View layout = findViewById(R.id.consoleLayout);
-                layout.setVisibility(View.INVISIBLE);
-            }
-        });
-
     }
 
     public void setupBroadCast(){
