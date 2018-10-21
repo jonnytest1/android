@@ -6,7 +6,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 
 import com.example.jonathan.ics.Activities.CustomActivity;
-import com.example.jonathan.ics.util.interfaceHandler;
 
 public class Permissions extends CustomActivity {
 
@@ -46,7 +45,6 @@ public class Permissions extends CustomActivity {
 
         for (String perm : perms) {
             if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                interfaceHandler.show(perm + " is not set",this);
                 requestPermissions(perms, 5);
                 return;
             }

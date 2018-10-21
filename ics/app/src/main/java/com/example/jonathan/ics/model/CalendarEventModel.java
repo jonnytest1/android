@@ -14,6 +14,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Created by Jonathan on 27.04.2018.
@@ -44,35 +45,34 @@ public class CalendarEventModel {
         String[] eventattributes = eventInICS.split("\r\n");
         CalendarEventModel cE=new CalendarEventModel();
         try{
-            for (int i3 = 0; i3 < eventattributes.length; i3++) {
-                String att = eventattributes[i3];
+            for (String att : eventattributes) {
                 if (att.contains("DTSTART")) {
                     cE.beginTime.setTime(parseDate(att.split(":")[1]));
-                    if(!att.split(":")[1].contains("T")){
-                        cE.allDay=true;
+                    if (!att.split(":")[1].contains("T")) {
+                        cE.allDay = true;
                     }
                     cE.startMillis = cE.beginTime.getTimeInMillis();
                 } else if (att.contains("DTEND")) {
-                    if(!att.split(":")[1].contains("T")){
-                        cE.allDay=true;
+                    if (!att.split(":")[1].contains("T")) {
+                        cE.allDay = true;
                     }
                     cE.endTime.setTime(parseDate(att.split(":")[1]));
                     cE.endMillis = cE.endTime.getTimeInMillis();
                 } else if (att.contains("RECURRENCE-ID")) {
-                    if(!att.split(":")[1].contains("T")){
-                        cE.allDay=true;
+                    if (!att.split(":")[1].contains("T")) {
+                        cE.allDay = true;
                     }
-                    cE.reftime=Calendar.getInstance();
+                    cE.reftime = Calendar.getInstance();
                     cE.reftime.setTime(parseDate(att.split(":")[1]));
                 } else if (att.contains("SUMMARY")) {
-                   // System.out.println(att);
-                    cE.title = att.replace("SUMMARY;","").replace("SUMMARY:","").replace("LANGUAGE=de:","");
+                    // System.out.println(att);
+                    cE.title = att.replace("SUMMARY;", "").replace("SUMMARY:", "").replace("LANGUAGE=de:", "");
                 } else if (att.contains("UID")) {
-                   // System.out.println(att);
+                    // System.out.println(att);
                     cE.uuid = att.split("UID:")[1];
                 } else if (att.contains("RRULE:")) {
                     String[] subatts = att.split(":")[1].split(";");
-                    try{
+                    try {
                         for (String t : subatts) {
                             if (t.contains("FREQ")) {
                                 cE.repType = t.split("FREQ=")[1];
@@ -84,36 +84,36 @@ public class CalendarEventModel {
                                 cE.repDays = t.split("BYDAY=")[1];
                             }
                         }
-                    }catch(IndexOutOfBoundsException ioobe){
+                    } catch (IndexOutOfBoundsException ioobe) {
                         ioobe.printStackTrace();
-                        interfaceHandler.getStorage().log(ioobe);
+                        interfaceHandler.getInstance().getStorage().log(ioobe);
                     }
                 }
             }
         }catch(IndexOutOfBoundsException ioobe){
             ioobe.printStackTrace();
-            interfaceHandler.getStorage().log(ioobe);
+            interfaceHandler.getInstance().getStorage().log(ioobe);
         }
         return  cE;
     }
     private List<ContentValues> toData(int calID ){
 
         List<ContentValues> eventList=new ArrayList<>();
-        if(uuid!=""&&uuid!=null&&reftime!=null){
+        if(uuid!=null&&!"".equals(uuid)&& reftime!=null){
             ContentValues values = new ContentValues();
             try{
                 values.put(CalendarContract.Events.DTSTART,startMillis);
-            }catch (NullPointerException e){
+            }catch (NullPointerException ignored){
 
             }
             try{
                 values.put(CalendarContract.Events.DTEND, endMillis);
-            }catch (NullPointerException e){
+            }catch (NullPointerException ignored){
 
             }
             try{
                 values.put(CalendarContract.Events.ALL_DAY, allDay);
-            }catch (NullPointerException e){
+            }catch (NullPointerException ignored){
 
             }
             eventList.add(values);
@@ -138,7 +138,7 @@ public class CalendarEventModel {
         List<ContentValues> eventList=new ArrayList<>();
         ContentValues reminder = new ContentValues();
         reminder.put(CalendarContract.Reminders.MINUTES,60);
-        reminder.put(CalendarContract.Reminders.EVENT_ID,uri.getPath().replace("/events/",""));
+        reminder.put(CalendarContract.Reminders.EVENT_ID,Objects.requireNonNull(uri.getPath()).replace("/events/",""));
         reminder.put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT);
         eventList.add(reminder);
 
@@ -161,7 +161,7 @@ public class CalendarEventModel {
     public boolean needsReminders(){
         return beginTime.get(Calendar.HOUR_OF_DAY)<10 &&
                 !title.equals("Ausbildungsnachweis")&&
-                !title.equals("PrintKalender")&&allDay==false;
+                !title.equals("PrintKalender")&& !allDay;
     }
 
     public List<ContentValues> getEvents(int calID){
@@ -202,7 +202,7 @@ public class CalendarEventModel {
                         //addition = repInterval * 1000 * 60 * 60 * 24*31;
                         break;
                     default:
-                        interfaceHandler.getStorage().log("unimplemented repetion type" + repType);
+                        interfaceHandler.getInstance().getStorage().log("unimplemented repetion type" + repType);
                         break;
                 }
                 startMillis+=addition;
@@ -236,37 +236,6 @@ public class CalendarEventModel {
             }
         }
     }
-    public long getStartMillis() {
-        return startMillis;
-    }
-
-    public void setStartMillis(long startMillis) {
-        this.startMillis = startMillis;
-    }
-
-    public long getEndMillis() {
-        return endMillis;
-    }
-
-    public void setEndMillis(long endMillis) {
-        this.endMillis = endMillis;
-    }
-
-    public Calendar getBeginTime() {
-        return beginTime;
-    }
-
-    public void setBeginTime(Calendar beginTime) {
-        this.beginTime = beginTime;
-    }
-
-    public Calendar getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(Calendar endTime) {
-        this.endTime = endTime;
-    }
 
     public String getTitle() {
         return title;
@@ -274,43 +243,6 @@ public class CalendarEventModel {
 
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    public String getRepType() {
-        return repType;
-    }
-
-    public void setRepType(String repType) {
-        this.repType = repType;
-    }
-
-
-    public void setRepAMount(int repAMount) {
-        this.repAMount = repAMount;
-    }
-
-    public int getRepInterval() {
-        return repInterval;
-    }
-
-    public void setRepInterval(int repInterval) {
-        this.repInterval = repInterval;
-    }
-
-    public boolean isAllDay() {
-        return allDay;
-    }
-
-    public void setAllDay(boolean allDay) {
-        this.allDay = allDay;
-    }
-
-    public String getRepDays() {
-        return repDays;
-    }
-
-    public void setRepDays(String repDays) {
-        this.repDays = repDays;
     }
 
     public String getUuid() {

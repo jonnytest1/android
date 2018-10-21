@@ -19,7 +19,7 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class DatabaseService {
 
-    public static final String[] EVENT_PROJECTION = new String[]{
+    private final String[] EVENT_PROJECTION = new String[]{
             CalendarContract.Calendars._ID,                           // 0
             CalendarContract.Calendars.ACCOUNT_NAME,                  // 1
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,         // 2
@@ -27,15 +27,14 @@ public class DatabaseService {
     };
 
 
-    Context context;
+    private Context context;
 
+    private ContentResolver contentResolver;
 
-    ContentResolver contentResolver;
-   public  DatabaseService(Context context){
-       this.context=context;
-       contentResolver= context.getContentResolver();
-
-   }
+    public DatabaseService(Context context){
+        this.context=context;
+        contentResolver= context.getContentResolver();
+    }
 
 
     @NonNull
@@ -75,8 +74,8 @@ public class DatabaseService {
 
    public void update(ContentValues values, String refUUID, Calendar refTimeBegin, int refCalenderID){
        if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
-           interfaceHandler.note("missing permission to write calendar");
-           interfaceHandler.getStorage().log("missing permission to write calendar");
+           interfaceHandler.getInstance().note("missing permission to write calendar");
+           interfaceHandler.getInstance().getStorage().log("missing permission to write calendar");
            return;
        }
        String[] selectionArgs =new String[]{refCalenderID+"",refUUID,refTimeBegin.getTimeInMillis()+""};
@@ -89,14 +88,14 @@ public class DatabaseService {
    public Uri insertEvent(ContentValues values){
       return insert(CalendarContract.Events.CONTENT_URI, values);
    }
-    public Uri insertReminder(ContentValues values){
-        return insert(CalendarContract.Reminders.CONTENT_URI,values);
+    public void insertReminder(ContentValues values){
+        insert(CalendarContract.Reminders.CONTENT_URI,values);
     }
 
     private Uri insert(Uri uri,ContentValues values){
         if (PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR)) {
-            interfaceHandler.note("missing permission to write calendar");
-            interfaceHandler.getStorage().log("missing permission to write calendar");
+            interfaceHandler.getInstance().note("missing permission to write calendar");
+            interfaceHandler.getInstance().getStorage().log("missing permission to write calendar");
             return null;
         }
         return contentResolver.insert(uri,values);
@@ -136,7 +135,7 @@ public class DatabaseService {
 
        contentResolver.delete(EVENTS_URI, where, selectionArgs);
 
-       interfaceHandler.getStorage().log("cleared edit calender");
+       interfaceHandler.getInstance().getStorage().log("cleared edit calender");
 
        ContentResolver.setMasterSyncAutomatically(false);
        ContentResolver.setMasterSyncAutomatically(true);

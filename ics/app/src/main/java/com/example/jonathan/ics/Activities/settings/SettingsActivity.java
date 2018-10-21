@@ -1,4 +1,4 @@
-package com.example.jonathan.ics.Activities.main;
+package com.example.jonathan.ics.Activities.settings;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -34,6 +34,8 @@ import java.util.ArrayList;
 
 import static com.example.jonathan.ics.R.id.refresh;
 import static com.example.jonathan.ics.services.invokers.SchedulerMail.registerScheduler;
+
+
 
 
 public class SettingsActivity extends CustomActivity {
@@ -84,7 +86,7 @@ public class SettingsActivity extends CustomActivity {
 
         for (String perm : perms) {
             if (ActivityCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                interfaceHandler.show(perm + " is not set",this);
+                interfaceHandler.getInstance().show(perm + " is not set");
                 requestPermissions(perms, 5);
                 return;
             }
@@ -109,7 +111,7 @@ public class SettingsActivity extends CustomActivity {
             iFilter.addAction(i.toString());
         }
         final TextView lastCheck= findViewById(R.id.textViewChecked);
-        interfaceHandler.getIBM(getBaseContext()).registerReceiver(new BroadcastReceiver() {
+        interfaceHandler.getInstance().getIBM(getBaseContext()).registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
@@ -119,11 +121,11 @@ public class SettingsActivity extends CustomActivity {
                     Drawable res = getResources().getDrawable(imageResource);
                     ((FloatingActionButton) findViewById(refresh)).setImageDrawable(res);
                 }else if(actions.OnError.toString().equals(action)){
-                    interfaceHandler.show(intent.getStringExtra("value"), self);
+                    interfaceHandler.getInstance().show(intent.getStringExtra("value"));
                 }else if(actions.finished.toString().equals(action)){
                     String value=intent.getStringExtra("value");
                     lastCheck.setText(value);
-                    interfaceHandler.getStorage().write(Storage.storageVariables.lastChecked,value);
+                    interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.lastChecked,value);
                     String uri = "@android:drawable/stat_notify_sync_noanim";
                     int imageResource = getResources().getIdentifier(uri, null, getPackageName());
                     Drawable res = getResources().getDrawable(imageResource);
@@ -142,35 +144,27 @@ public class SettingsActivity extends CustomActivity {
     public void updateDatefield(){
 
         FloatingActionButton refresh = findViewById(R.id.refresh);
-        refresh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                SchedulerMail.startInNewThread(getBaseContext());
-            }
-        });
+        refresh.setOnClickListener(view -> SchedulerMail.startInNewThread(getBaseContext()));
         refresh.getBackground().setColorFilter(Color.parseColor("#ff99cc00"), PorterDuff.Mode.DARKEN);
         refresh.bringToFront();
 
         FloatingActionButton clear = findViewById(R.id.clear);
-        clear.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                try {
-                    System.out.println("clearing");
-                    String account= interfaceHandler.getStorage().get(Storage.storageVariables.account);
-                    if(account==null){
-                        interfaceHandler.update(SettingsActivity.actions.OnError,"account not defined",getBaseContext());
-                        return;
-                    }
-                    String calenderToDelete= interfaceHandler.getStorage().get(Storage.storageVariables.calender);
-                    if(calenderToDelete==null){
-                        interfaceHandler.update(SettingsActivity.actions.OnError,"calender is not defined",getBaseContext());
-                        return;
-                    }
-                    new DatabaseService(self).deleteEntries(account,calenderToDelete);
-                }catch(Exception e){
-                    e.printStackTrace();
+        clear.setOnClickListener(view -> {
+            try {
+                System.out.println("clearing");
+                String account= interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.account);
+                if(account==null){
+                    interfaceHandler.getInstance().update(actions.OnError,"account not defined",getBaseContext());
+                    return;
                 }
+                String calenderToDelete= interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.calender);
+                if(calenderToDelete==null){
+                    interfaceHandler.getInstance().update(actions.OnError,"calender is not defined",getBaseContext());
+                    return;
+                }
+                new DatabaseService(self).deleteEntries(account,calenderToDelete);
+            }catch(Exception e){
+                e.printStackTrace();
             }
         });
         clear.bringToFront();
@@ -178,7 +172,7 @@ public class SettingsActivity extends CustomActivity {
 
         final TextView lastCheck = findViewById(R.id.textViewChecked);
         lastCheck.setSingleLine(false);
-        String lastC= interfaceHandler.getStorage().get(Storage.storageVariables.lastChecked);
+        String lastC= interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.lastChecked);
         if(lastC!=null){
             lastCheck.setText(lastC);
         }
@@ -187,56 +181,47 @@ public class SettingsActivity extends CustomActivity {
     private void mailpwfields(){
 
         final EditText Email = findViewById(R.id.email);
-        Email.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction()!=KeyEvent.ACTION_DOWN){
-                    return false;
-                }
-                if(keyCode==KeyEvent.KEYCODE_ENTER){
-                     interfaceHandler.getStorage().write(Storage.storageVariables.mail,Email.getText().toString());
-                    checkMail();
-                    return true;
-                }
+        Email.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction()!=KeyEvent.ACTION_DOWN){
                 return false;
             }
+            if(keyCode==KeyEvent.KEYCODE_ENTER){
+                 interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.mail,Email.getText().toString());
+                checkMail();
+                return true;
+            }
+            return false;
         });
-        Email.setText(interfaceHandler.getStorage().get(Storage.storageVariables.mail));
+        Email.setText(interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.mail));
 
         final EditText pw = findViewById(R.id.password);
-        pw.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction()!=KeyEvent.ACTION_DOWN){
-                    return false;
-                }
-                if(keyCode==KeyEvent.KEYCODE_ENTER){
-                     interfaceHandler.getStorage().write(Storage.storageVariables.password,pw.getText().toString());
-                    checkMail();
-                    return true;
-                }
+        pw.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction()!=KeyEvent.ACTION_DOWN){
                 return false;
             }
+            if(keyCode==KeyEvent.KEYCODE_ENTER){
+                 interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.password,pw.getText().toString());
+                checkMail();
+                return true;
+            }
+            return false;
         });
-        pw.setText( interfaceHandler.getStorage().get(Storage.storageVariables.password));
+        pw.setText( interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.password));
 
         final EditText basmail = findViewById(R.id.editText5);
-        basmail.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction()!=KeyEvent.ACTION_DOWN){
-                    return false;
-                }
-                if(keyCode==KeyEvent.KEYCODE_ENTER){
-                     interfaceHandler.getStorage().write(Storage.storageVariables.basMail,basmail.getText().toString());
-
-                    return true;
-                }
-
+        basmail.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction()!=KeyEvent.ACTION_DOWN){
                 return false;
             }
+            if(keyCode==KeyEvent.KEYCODE_ENTER){
+                 interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.basMail,basmail.getText().toString());
+
+                return true;
+            }
+
+            return false;
         });
-        basmail.setText( interfaceHandler.getStorage().get(Storage.storageVariables.basMail));
+        basmail.setText( interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.basMail));
     }
     private void calenderSpinner(){
 
@@ -247,18 +232,15 @@ public class SettingsActivity extends CustomActivity {
                 if (position != parent.getCount() - 1) {
                     final String chosen = calender.getSelectedItem().toString();
                     if(nextCalender[0]) {
-                         interfaceHandler.show("this calenders content will be lost", new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                if (!chosen.equals( interfaceHandler.getStorage().get(Storage.storageVariables.calender))) {
-                                     interfaceHandler.getStorage().write(Storage.storageVariables.calender, chosen);
-                                }
-                            }
-                        }, self);
+                         interfaceHandler.getInstance().show("this calenders content will be lost", v -> {
+                             if (!chosen.equals( interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.calender))) {
+                                  interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.calender, chosen);
+                             }
+                         });
                     }
                 } else {
                     if(nextCalender[0]) {
-                         interfaceHandler.getStorage().write(Storage.storageVariables.calender, null);
+                         interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.calender, null);
                     }
                 }
                 nextCalender[0] = true;
@@ -279,8 +261,8 @@ public class SettingsActivity extends CustomActivity {
                 if (position != parent.getCount() - 1) {
                     String account = ((Spinner) findViewById(R.id.spinner)).getSelectedItem().toString();
                     if(nextAccounts[0]) {
-                        if(!account.equals( interfaceHandler.getStorage().get(Storage.storageVariables.account))) {
-                             interfaceHandler.getStorage().write(Storage.storageVariables.account, account);
+                        if(!account.equals( interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.account))) {
+                             interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.account, account);
                         }
                     }
                     ArrayList<String> cals2 = new DatabaseService(self).getCalendarsForAccount(account);
@@ -290,7 +272,7 @@ public class SettingsActivity extends CustomActivity {
                     ArrayAdapter<String> aA = new ArrayAdapter<>(getBaseContext(), android.R.layout.simple_spinner_item, cals2);
                     calender.setSelection(aA.getCount() - 1);
                     calender.setAdapter(aA);
-                    String calenderString =  interfaceHandler.getStorage().get(Storage.storageVariables.calender);
+                    String calenderString =  interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.calender);
                     if (calenderString != null) {
                         int spinnerPosition = aA.getPosition(calenderString);
                         if (spinnerPosition != -1) {
@@ -303,7 +285,7 @@ public class SettingsActivity extends CustomActivity {
                     }
                 } else {
                     if(nextAccounts[0]) {
-                         interfaceHandler.getStorage().write(Storage.storageVariables.account, null);
+                         interfaceHandler.getInstance().getStorage().write(Storage.storageVariables.account, null);
                     }
                 }
                  nextAccounts[0]=true;
@@ -316,7 +298,7 @@ public class SettingsActivity extends CustomActivity {
         cals.add("choose one");
         ArrayAdapter<String> ad= new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, cals);
         accounts.setAdapter(ad);
-        String compareValue =  interfaceHandler.getStorage().get(Storage.storageVariables.account);
+        String compareValue =  interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.account);
         if (compareValue != null) {
             int spinnerPosition = ad.getPosition(compareValue);
             if(spinnerPosition!=-1) {

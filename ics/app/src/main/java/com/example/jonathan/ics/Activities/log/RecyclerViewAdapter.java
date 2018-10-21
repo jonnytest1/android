@@ -14,7 +14,7 @@ import java.util.List;
 
 public class RecyclerViewAdapter extends RecyclerView.Adapter<cHolder> {
 
-    List<LoggingElement> exceptions;
+    private List<LoggingElement> exceptions;
     private LogActivity logActivity;
 
 
@@ -24,23 +24,20 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<cHolder> {
     }
     @Override
     public cHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerelement, parent, false);
-        cHolder holder = new cHolder(v);
-        v.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-               TextView stack= logActivity.findViewById(R.id.stacktrace);
-               stack.setMovementMethod(new ScrollingMovementMethod());
-               stack.setText(holder.loggingElement.getContent());
-               stack.setVisibility(View.VISIBLE);
-               stack.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        TextView stack= logActivity.findViewById(R.id.stacktrace);
-                        stack.setVisibility(View.INVISIBLE);
-                    }
-               });
-            }
+        View inflatedView = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerelement, parent, false);
+        cHolder holder = new cHolder(inflatedView);
+        inflatedView.setOnClickListener(view -> {
+            TextView stack= logActivity.findViewById(R.id.stacktrace);
+            stack.setMovementMethod(new ScrollingMovementMethod());
+            stack.setText(holder.loggingElement.getContent());
+            stack.setHorizontallyScrolling(true);
+            stack.setFocusable(true);
+            stack.setScrollX(0);
+            stack.setScrollY(0);
+            stack.setVisibility(View.VISIBLE);
+            stack.setOnClickListener(view2 -> {
+                stack.setVisibility(View.INVISIBLE);
+            });
         });
         return holder;
     }

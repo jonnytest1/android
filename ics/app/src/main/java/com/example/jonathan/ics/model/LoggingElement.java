@@ -3,13 +3,13 @@ package com.example.jonathan.ics.model;
 import com.example.jonathan.ics.util.Converters;
 
 import java.util.Date;
-public class LoggingElement extends Object {
+public class LoggingElement {
 
-    String date;
-    String content;
-    String title;
+    private String date;
+    private String content;
+    private String title;
 
-    boolean errorStack;
+    private boolean errorStack;
 
     //implicit contructor for jsonParsing
     public  LoggingElement(){
@@ -57,7 +57,4 @@ public class LoggingElement extends Object {
         return errorStack;
     }
 
-    public void setErrorStack(boolean errorStack) {
-        this.errorStack = errorStack;
-    }
 }

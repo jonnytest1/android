@@ -7,6 +7,6 @@ public class Converters {
 
 
     public static String toString (StackTraceElement[] stackArray){
-        return Arrays.stream(stackArray).map(sE->sE.toString()).collect(Collectors.joining("\n"));
+        return Arrays.stream(stackArray).map(StackTraceElement::toString).collect(Collectors.joining("\n"));
     }
 }

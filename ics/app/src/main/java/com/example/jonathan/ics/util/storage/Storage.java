@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import com.example.jonathan.ics.model.LoggingElement;
-import com.example.jonathan.ics.Activities.main.SettingsActivity;
+import com.example.jonathan.ics.Activities.settings.SettingsActivity;
 import com.example.jonathan.ics.util.interfaceHandler;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,23 +36,19 @@ public class Storage {
     }
 
     public void register(storageVariables storageKey,storageListener listener){
-        sP.registerOnSharedPreferenceChangeListener(new SharedPreferences.OnSharedPreferenceChangeListener() {
-            @Override
-            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                if(key.equals(storageKey.toString())) {
-                    listener.OnStorageChange(sharedPreferences.getString(key, ""));
-                }
+        sP.registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> {
+            if(key.equals(storageKey.toString())) {
+                listener.OnStorageChange(sharedPreferences.getString(key, ""));
             }
         });
     }
 
     public void write(storageVariables key, String value ){
         if(key.equals(storageVariables.log)) {
-            interfaceHandler.update(SettingsActivity.actions.logUpdate,"",context);
+            interfaceHandler.getInstance().update(SettingsActivity.actions.logUpdate,"",context);
         }
         SharedPreferences.Editor editor = sP.edit();
         editor.putString(key.toString(),value);
-        editor.commit();
         editor.apply();
     }
     public List<LoggingElement> getLog(){
@@ -69,7 +65,7 @@ public class Storage {
             }
             return list;
         } catch (IOException | NullPointerException |ClassCastException e) {
-            interfaceHandler.note(e.getMessage());
+            interfaceHandler.getInstance().note(e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -90,6 +86,7 @@ public class Storage {
         log(new LoggingElement(value));
     }
     public void log(Throwable value ){
+        interfaceHandler.getInstance().note("excption"+value.getMessage());
         log(new LoggingElement(value));
     }
 }

@@ -34,7 +34,7 @@ public class CalndarFromFileService extends CustomActivity {
         Intent intent = getIntent();
         String action = intent.getAction();
         progressBar = findViewById(R.id.progressBar);
-        if (Intent.ACTION_VIEW.equals(action)&&intent.getType().equals("text/calendar"))
+        if (Intent.ACTION_VIEW.equals(action)&& "text/calendar".equals(intent.getType()))
         {
             progressBar.setProgress(1);
             Uri path=intent.getData();
@@ -60,7 +60,7 @@ public class CalndarFromFileService extends CustomActivity {
                             progressBar.setProgress(60);
                             mailHandler.saveCalender(calendar,calendarIndex, progressBar);
                             progressBar.setProgress(100);
-                            interfaceHandler.getStorage().log("completed calendar");
+                            interfaceHandler.getInstance().getStorage().log("completed calendar");
                             gotoClass(LogActivity.class);
                         }).start();
                     }
@@ -68,14 +68,14 @@ public class CalndarFromFileService extends CustomActivity {
             } catch (ParserException e) {
                 progressBar.setBackgroundColor(Color.RED);
                 e.printStackTrace();
-                interfaceHandler.getStorage().log(e);
+                interfaceHandler.getInstance().getStorage().log(e);
             } catch (IOException e) {
-                interfaceHandler.getStorage().log(e);
+                interfaceHandler.getInstance().getStorage().log(e);
                 e.printStackTrace();
             }catch (Exception e){
                 progressBar.setBackgroundColor(Color.RED);
                 e.printStackTrace();
-                interfaceHandler.getStorage().log(e);
+                interfaceHandler.getInstance().getStorage().log(e);
             }
         }
     }

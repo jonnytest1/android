@@ -13,14 +13,14 @@ public class CustomActivity extends AppCompatActivity {
     @Override
     public void setSupportActionBar(@Nullable Toolbar toolbar) {
         super.setSupportActionBar(toolbar);
-        interfaceHandler.setCurrentToolbar(toolbar);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        interfaceHandler.init(this);
+        interfaceHandler.createInstance(this);
     }
+
 
     public void gotoClass(Class<? extends CustomActivity> activity){
         Intent k = new Intent(this, activity);

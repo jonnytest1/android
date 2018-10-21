@@ -8,11 +8,11 @@ import android.widget.TextView;
 import com.example.jonathan.ics.model.LoggingElement;
 import com.example.jonathan.ics.R;
 
-public class cHolder extends  RecyclerView.ViewHolder{
+class cHolder extends  RecyclerView.ViewHolder{
 
-    TextView title;
-    TextView content;
-    TextView date;
+    private TextView title;
+    private TextView content;
+    private TextView date;
 
     LoggingElement loggingElement;
     cHolder(View itemView){
@@ -21,9 +21,9 @@ public class cHolder extends  RecyclerView.ViewHolder{
         title=itemView.findViewById(R.id.text1);
         content=itemView.findViewById(R.id.text2);
         date = itemView.findViewById(R.id.date);
-    };
+    }
 
-    public void assignTo(LoggingElement obj) {
+    void assignTo(LoggingElement obj) {
         this.loggingElement =obj;
         title.setText(obj.getTitle());
         if(obj.isErrorStack()) {

@@ -7,7 +7,7 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 
-import com.example.jonathan.ics.Activities.main.SettingsActivity;
+import com.example.jonathan.ics.Activities.settings.SettingsActivity;
 import com.example.jonathan.ics.services.MailServerService;
 import com.example.jonathan.ics.util.interfaceHandler;
 
@@ -17,25 +17,22 @@ public class SchedulerMail extends JobService {
     @Override
     public boolean onStartJob(JobParameters params) {
         try {
-            interfaceHandler.getStorage().log("scheduler: " + new Date().toLocaleString());
+            interfaceHandler.getInstance().getStorage().log("scheduler: " + new Date().toLocaleString());
             startInNewThread(getBaseContext());
             return false;
         }catch(Exception e){
-            interfaceHandler.getStorage().log(e);
+            interfaceHandler.getInstance().getStorage().log(e);
             return false;
         }
     }
     public static void startInNewThread(final Context context){
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    MailServerService mailServerService = new MailServerService(context);
-                    mailServerService.checkMails();
-                    interfaceHandler.update(SettingsActivity.actions.finished, new Date().toLocaleString(), context);
-                }catch(Exception e){
-                    interfaceHandler.getStorage().log(e);
-                }
+        new Thread(() -> {
+            try {
+                MailServerService mailServerService = new MailServerService(context);
+                mailServerService.checkMails();
+                interfaceHandler.getInstance().update(SettingsActivity.actions.finished, new Date().toLocaleString(), context);
+            }catch(Exception e){
+                interfaceHandler.getInstance().getStorage().log(e);
             }
         }).start();
     }
@@ -56,7 +53,7 @@ public class SchedulerMail extends JobService {
     public static boolean registerScheduler(Context context){
         JobScheduler scheduler=context.getSystemService(JobScheduler.class);
         if(scheduler==null){
-            interfaceHandler.note("failed getting schedulerService");
+            interfaceHandler.getInstance().note("failed getting schedulerService");
             return false;
         }
         if(scheduler.getPendingJob(1234)==null){

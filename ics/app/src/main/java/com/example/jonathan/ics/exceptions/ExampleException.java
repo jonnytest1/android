@@ -2,13 +2,12 @@ package com.example.jonathan.ics.exceptions;
 
 public class ExampleException extends Exception {
 
-    final String exampleMessage="example";
+    private String message;
 
-    String message=exampleMessage;
+    private final String exampleMessage="example Exception";
+
     public ExampleException(){
-    }
-    public ExampleException(String msg){
-        message=msg;
+        this.message=exampleMessage;
     }
 
     @Override

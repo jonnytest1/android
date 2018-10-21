@@ -4,10 +4,9 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
-import android.provider.CalendarContract;
 import android.widget.ProgressBar;
 
-import com.example.jonathan.ics.Activities.main.SettingsActivity;
+import com.example.jonathan.ics.Activities.settings.SettingsActivity;
 import com.example.jonathan.ics.model.CalendarEventModel;
 import com.example.jonathan.ics.repositories.DatabaseService;
 import com.example.jonathan.ics.util.interfaceHandler;
@@ -31,20 +30,19 @@ import javax.mail.internet.MimeBodyPart;
 
 public class MailHandler {
 
-    Context context;
+    private Context context;
 
     public MailHandler(Context context){
         this.context=context;
     }
 
-
-    public void handleMessages(Message message){
+    void handleMessages(Message message){
         Calendar cal=getFirstCalendarFromMessages(message);
         if(cal!=null){
             int calendarId=clear();
             saveCalender(cal,calendarId, null);
         }else{
-            interfaceHandler.getStorage().log("didnt get Calendar from Message");
+            interfaceHandler.getInstance().getStorage().log("didnt get Calendar from Message");
         }
     }
 
@@ -54,16 +52,16 @@ public class MailHandler {
                     && message.getSubject().contains("Kalender von")
                     && message.getContentType().contains("multipart");
         } catch (MessagingException e) {
-            interfaceHandler.getStorage().log(e);
+            interfaceHandler.getInstance().getStorage().log(e);
             return false;
         }
     }
 
-    public Calendar getFirstCalendarFromMessages(Message message) {
+    private Calendar getFirstCalendarFromMessages(Message message) {
         System.out.println("checking mails");
-        String basMail=interfaceHandler.getStorage().get(Storage.storageVariables.basMail);
+        String basMail=interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.basMail);
         if(basMail==null){
-            interfaceHandler.note("basMail is null");
+            interfaceHandler.getInstance().note("basMail is null");
             return null;
         }
         try {
@@ -77,17 +75,17 @@ public class MailHandler {
                         return builder.build(is);
                     }
                 }
-                interfaceHandler.getStorage().log("no attachment on mail");
+                interfaceHandler.getInstance().getStorage().log("no attachment on mail");
                 return null;
             }
         } catch (MessagingException | IOException e) {
-            interfaceHandler.getStorage().log("Messageing Exception in mail Handler");
+            interfaceHandler.getInstance().getStorage().log("Messageing Exception in mail Handler");
             e.printStackTrace();
         }catch(Exception e){
-            interfaceHandler.getStorage().log("Other Exception in mail Handler");
+            interfaceHandler.getInstance().getStorage().log("Other Exception in mail Handler");
             e.printStackTrace();
         }
-        interfaceHandler.note("emails not from correct mail or wrongly formated double Check basMail");
+        interfaceHandler.getInstance().note("emails not from correct mail or wrongly formated double Check basMail");
         return null;
     }
     public void saveCalender(Calendar calendar, int calID, ProgressBar progressBar)  {
@@ -131,17 +129,16 @@ public class MailHandler {
 
     public int clear() {
         System.out.println("clearing");
-        String selection = "((" + CalendarContract.Calendars.ACCOUNT_NAME + " = ?) )";
-        String account= interfaceHandler.getStorage().get(Storage.storageVariables.account);
 
+        String account= interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.account);
         if(account==null){
-            interfaceHandler.update(SettingsActivity.actions.OnError,"account not defined",context);
+            interfaceHandler.getInstance().update(SettingsActivity.actions.OnError,"account not defined",context);
             return -1;
         }
 
-        String calenderToDelete= interfaceHandler.getStorage().get(Storage.storageVariables.calender);
+        String calenderToDelete= interfaceHandler.getInstance().getStorage().get(Storage.storageVariables.calender);
         if(calenderToDelete==null){
-            interfaceHandler.update(SettingsActivity.actions.OnError,"calender is not defined",context);
+            interfaceHandler.getInstance().update(SettingsActivity.actions.OnError,"calender is not defined",context);
             return -1;
         }
 

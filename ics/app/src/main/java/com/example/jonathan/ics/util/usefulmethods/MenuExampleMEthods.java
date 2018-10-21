@@ -8,8 +8,6 @@ import com.example.jonathan.ics.R;
 
 public class MenuExampleMEthods extends CustomActivity {
 
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
